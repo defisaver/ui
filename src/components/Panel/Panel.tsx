@@ -17,7 +17,7 @@ const styles = stylex.create({
     borderColor: colors.surfaceBorderSurface,
     borderRadius: radius.xl,
     borderStyle: 'solid',
-    borderWidth: '0.5px',
+    borderWidth: '1px',
     overflow: 'hidden',
     backgroundColor: colors.surfaceShade,
     display: 'flex',
@@ -39,7 +39,7 @@ const styles = stylex.create({
     // The divider only separates the header from content below it. When the
     // header is the last child (e.g. a collapsed panel) it would stack against
     // the Panel's own bottom border, reading as a doubled line — so drop it.
-    borderBottomWidth: { default: '0.5px', ':last-child': '0' },
+    borderBottomWidth: { default: '1px', ':last-child': '0' },
     borderTopLeftRadius: `calc(${radius.xl} - 1px)`,
     borderTopRightRadius: `calc(${radius.xl} - 1px)`,
   },
@@ -79,10 +79,13 @@ const styles = stylex.create({
     height: '20px',
     width: '20px',
   },
-  // The 20x20 hit area overhangs the 12px icon footprint so it doesn't
-  // inflate the 28px header (8+12+8) — visual position stays icon-sized.
+  // The 20x20 hit area overhangs the 12px icon footprint (top/bottom/left)
+  // so it doesn't inflate the 28px header (8+12+8) and the icon stays on the
+  // 10px padding edge. No overhang toward the text — the hover circle would
+  // eat the gap to the title.
   toggleS: {
-    margin: '-4px',
+    marginBlock: '-4px',
+    marginInlineStart: '-4px',
   },
   chevron: {
     transition: 'transform 0.2s ease',
@@ -100,7 +103,7 @@ const styles = stylex.create({
     paddingInlineStart: space.s2_5,
     borderTopColor: colors.surfaceBorderSurface,
     borderTopStyle: 'solid',
-    borderTopWidth: '0.5px',
+    borderTopWidth: '1px',
   },
   footerS: {
     minHeight: '28px',
