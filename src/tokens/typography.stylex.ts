@@ -5,6 +5,7 @@ import * as stylex from '@stylexjs/stylex';
 // the same rendered size standalone. Minimal by design — add entries when a
 // component needs them.
 export const text = stylex.defineConsts({
+  sizeSmall: 'var(--text-size-small, 12px)',
   sizeRegular: 'var(--text-size-regular, 14px)',
   weightSemiBold: 'var(--text-weight-semi-bold, 500)',
 });

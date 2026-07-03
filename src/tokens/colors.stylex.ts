@@ -9,4 +9,6 @@ export const colors = stylex.defineVars({
   surface: 'var(--surface, #1F272E)',
   surfaceShade: 'var(--surface-shade, #181F25)',
   textSecondary: 'var(--text-color-secondary, #B2C1CC)',
+  // Translucent overlay for hover states on interactive elements
+  white5Hover: 'var(--interaction-white-5-hover, #FFFFFF0D)',
 });
