@@ -4,6 +4,9 @@ import stylexPlugin from '@stylexjs/eslint-plugin';
 
 export default defineConfig([
   {
+    ignores: ['dist/**', 'storybook-static/**', 'node_modules/**'],
+  },
+  {
     extends: reactConfig,
     files: ['src/**/*.{ts,tsx}', '.storybook/**/*.{ts,tsx}', '*.{ts,mjs}', 'eslint.config.js'],
     settings: {
