@@ -64,20 +64,9 @@ const styles = stylex.create({
     fontSize: text.sizeRegular,
     lineHeight: '20px',
   },
-  // Estimates from the Figma screenshots — correct against dev-mode values
-  eyebrow: {
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-  },
-  eyebrowS: {
-    fontSize: '10px',
-  },
-  eyebrowM: {
-    fontSize: '11px',
-  },
   toggle: {
     padding: 0,
-    borderRadius: radius.large,
+    borderRadius: radius.medium,
     borderStyle: 'none',
     transition: 'background-color 0.2s ease',
     alignItems: 'center',
@@ -131,7 +120,6 @@ interface PanelRootProps extends PanelProps {
 }
 
 interface PanelTitleProps extends PanelProps {
-  eyebrow?: boolean;
   collapsible?: boolean;
   collapsed?: boolean;
   onToggle?: () => void;
@@ -191,7 +179,6 @@ export const PanelHeader = ({ className, children }: PanelProps) => {
 export const PanelTitle = ({
   className,
   children,
-  eyebrow = false,
   collapsible = false,
   collapsed = false,
   onToggle,
@@ -200,12 +187,7 @@ export const PanelTitle = ({
   return (
     <span
       {...withClassName(
-        stylex.props(
-          styles.title,
-          size === 'm' ? styles.titleM : styles.titleS,
-          eyebrow && styles.eyebrow,
-          eyebrow && (size === 'm' ? styles.eyebrowM : styles.eyebrowS),
-        ),
+        stylex.props(styles.title, size === 'm' ? styles.titleM : styles.titleS),
         className,
       )}
     >

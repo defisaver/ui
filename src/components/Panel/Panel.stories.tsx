@@ -53,20 +53,6 @@ export const SizeM: Story = {
   },
 };
 
-export const Eyebrow: Story = {
-  args: {
-    size: 's',
-    children: (
-      <>
-        <PanelHeader>
-          <PanelTitle eyebrow>Panel title</PanelTitle>
-        </PanelHeader>
-        {body}
-      </>
-    ),
-  },
-};
-
 // Consumer owns the collapse state: one useState, conditionally render the
 // body. When collapsed, the header becomes the Panel's last child and its
 // bottom divider is dropped automatically.
