@@ -11,8 +11,8 @@ const styles = stylex.create({
   all: {
     padding: `${space.s3} ${space.s4}`,
     borderColor: colors.surfaceShade,
-    borderRadius: radius.xl,
-    gap: space.s2,
+    borderRadius: { default: radius.xl, ':hover': radius.fullyRounded },
+    gap: { default: space.s2, ':hover': space.s0_25 },
     backgroundColor: colors.surface,
     color: colors.textSecondary,
     fontSize: text.sizeRegular,
