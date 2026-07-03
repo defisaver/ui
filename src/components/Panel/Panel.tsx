@@ -14,7 +14,7 @@ const PanelSizeContext = createContext<PanelSize>('m');
 
 const styles = stylex.create({
   panel: {
-    borderColor: colors.surface,
+    borderColor: colors.surfaceBorderSurface,
     borderRadius: radius.xl,
     borderStyle: 'solid',
     borderWidth: '0.5px',
@@ -27,10 +27,9 @@ const styles = stylex.create({
   header: {
     gap: space.s2,
     alignItems: 'center',
-    backgroundColor: colors.surface,
     display: 'flex',
     justifyContent: 'space-between',
-    borderBottomColor: colors.surface,
+    borderBottomColor: colors.surfaceBorderSurface,
     borderBottomStyle: 'solid',
     // The divider only separates the header from content below it. When the
     // header is the last child (e.g. a collapsed panel) it would stack against
@@ -97,9 +96,11 @@ const styles = stylex.create({
   footer: {
     gap: space.s2,
     alignItems: 'center',
-    backgroundColor: colors.surface,
     display: 'flex',
     justifyContent: 'space-between',
+    borderTopColor: colors.surfaceBorderSurface,
+    borderTopStyle: 'solid',
+    borderTopWidth: '0.5px',
   },
   footerS: {
     paddingInline: space.s3,

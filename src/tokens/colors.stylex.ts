@@ -8,6 +8,9 @@ import * as stylex from '@stylexjs/stylex';
 export const colors = stylex.defineVars({
   surface: 'var(--surface, #1F272E)',
   surfaceShade: 'var(--surface-shade, #181F25)',
+  // Hairline borders/dividers on surfaces — a step lighter so they read
+  // against both the page background and panel interiors
+  surfaceBorderSurface: 'var(--surface-border-surface, #252F37)',
   textSecondary: 'var(--text-color-secondary, #B2C1CC)',
   // Translucent overlay for hover states on interactive elements
   white5Hover: 'var(--interaction-white-5-hover, #FFFFFF0D)',
