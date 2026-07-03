@@ -17,21 +17,9 @@ That works identically under esbuild, Vite, and Next.js — no Babel, no plugins
 
 ### Design tokens
 
-Tokens live in `src/tokens/*.stylex.ts`, one file per concern:
+Tokens live in `src/tokens/*.stylex.ts` (`colors`, `space`, `radius`, `text`) and are **deliberately minimal**: a token is added the moment a component being ported needs it, never speculatively. The old app's full token inventory was audited (see git history / `~/.claude/plans` analysis) but not imported wholesale — most of it is legacy design debt, and every unused `defineVars` entry would ship as dead CSS to consumers. **Figma is the intended long-term source of truth for the token set** (sync pipeline TBD).
 
-| File | Exports | Source of truth |
-|---|---|---|
-| `palette.stylex.ts` | `blueGray`, `green`, `pine`, `purple`, `orange`, `red`, `blue` ramps | **Canonical** (literal hex) — don't use directly in components; go through `colors` |
-| `colors.stylex.ts` | `colors` — semantic: surface/container/text/border/brand/collateral/debt/interaction | Defers to app vars |
-| `spacing.stylex.ts` | `space.s0_25`…`space.s20` (4px scale + half-steps) | Defers to app vars |
-| `radius.stylex.ts` | `radius.small`…`radius.fullyRounded` | Defers to app vars |
-| `typography.stylex.ts` | `font` (Montserrat), `text` (size ramp + weights) | Defers to app vars |
-| `elevation.stylex.ts` | `shadow.low/medium/high/ring` | **Canonical** (app has no shadow tokens) |
-| `zIndex.stylex.ts` | `zIndex.raised/dropdown/sticky/backdrop/modal/toast` | **Canonical** (matches app's observed ceilings) |
-| `motion.stylex.ts` | `duration.fast/base/slow`, `easing.hover/inOut/out` | **Canonical** (from the app's hover-transition mixin) |
-| `breakpoints.stylex.ts` | `breakpoint.sm/md/lg/xl/xxl` — usable as StyleX condition keys | **Canonical** (consolidates the app's 11 SCSS mixins to 5) |
-
-The rule: **themable/app-owned values defer** to defisaver-app's custom properties with standalone fallbacks (`var(--surface, #1F272E)`) — inside the app, components follow `theme.scss` including `[data-theme]` switching with zero migration; standalone, the dark-theme fallbacks apply. **Values the app never tokenized are canonical here.** Names mirror the app's (`--text-color-primary` → `colors.textPrimary`) so porting is mechanical.
+Each value defers to defisaver-app's custom property with a standalone fallback, e.g. `var(--surface, #1F272E)` — inside the app, components follow `theme.scss` including `[data-theme]` switching with zero migration; standalone, the app's dark-theme fallbacks apply. Names mirror the app's (`--text-color-secondary` → `colors.textSecondary`) so porting stays mechanical.
 
 `src/tokens/tokens.test.ts` compiles every token file through a real `stylex.create()` as a regression guard.
 
