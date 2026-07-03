@@ -26,9 +26,14 @@ const styles = stylex.create({
   },
   header: {
     gap: space.s2,
+    // 10px left, 8px elsewhere (same for both sizes); the size heights fall
+    // out of the vertical padding + title line: 8+12+8=28 (s), 8+20+8=36 (m)
+    paddingBlock: space.s2,
     alignItems: 'center',
     display: 'flex',
     justifyContent: 'space-between',
+    paddingInlineEnd: space.s2,
+    paddingInlineStart: space.s2_5,
     borderBottomColor: colors.surfaceBorderSurface,
     borderBottomStyle: 'solid',
     // The divider only separates the header from content below it. When the
@@ -39,11 +44,9 @@ const styles = stylex.create({
     borderTopRightRadius: `calc(${radius.xl} - 1px)`,
   },
   headerS: {
-    paddingInline: space.s3,
     minHeight: '28px',
   },
   headerM: {
-    paddingInline: space.s4,
     minHeight: '36px',
   },
   title: {
@@ -55,7 +58,7 @@ const styles = stylex.create({
   },
   titleS: {
     fontSize: text.sizeSmall,
-    lineHeight: '16px',
+    lineHeight: '12px',
   },
   titleM: {
     fontSize: text.sizeRegular,
@@ -87,6 +90,11 @@ const styles = stylex.create({
     height: '20px',
     width: '20px',
   },
+  // The 20x20 hit area overhangs the 12px icon footprint so it doesn't
+  // inflate the 28px header (8+12+8) — visual position stays icon-sized.
+  toggleS: {
+    margin: '-4px',
+  },
   chevron: {
     transition: 'transform 0.2s ease',
   },
@@ -95,19 +103,20 @@ const styles = stylex.create({
   },
   footer: {
     gap: space.s2,
+    paddingBlock: space.s2,
     alignItems: 'center',
     display: 'flex',
     justifyContent: 'space-between',
+    paddingInlineEnd: space.s2,
+    paddingInlineStart: space.s2_5,
     borderTopColor: colors.surfaceBorderSurface,
     borderTopStyle: 'solid',
     borderTopWidth: '0.5px',
   },
   footerS: {
-    paddingInline: space.s3,
     minHeight: '28px',
   },
   footerM: {
-    paddingInline: space.s4,
     minHeight: '36px',
   },
 });
@@ -206,7 +215,7 @@ export const PanelTitle = ({
           aria-expanded={!collapsed}
           aria-label="Toggle section"
           onClick={onToggle}
-          {...stylex.props(styles.toggle)}
+          {...stylex.props(styles.toggle, size === 's' && styles.toggleS)}
         >
           <Chevron size={size} collapsed={collapsed} />
         </button>
