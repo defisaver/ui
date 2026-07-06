@@ -71,7 +71,7 @@ const styles = stylex.create({
     padding: 0,
     borderRadius: radius.medium,
     borderStyle: 'none',
-    transition: 'background-color 0.2s ease',
+    transition: 'background-color 0.2s ease, scale 0.15s ease-out',
     alignItems: 'center',
     backgroundColor: { default: 'transparent', ':hover': colors.white5Hover },
     color: 'inherit',
@@ -83,8 +83,17 @@ const styles = stylex.create({
     // collapsible headers get their tighter left padding without the header
     // knowing about the title.
     marginInlineStart: '-4px',
+    position: 'relative',
+    scale: { default: '1', ':active': '0.96' },
     height: '20px',
     width: '20px',
+    // The visible button (and hover circle) stays 20×20, but the clickable
+    // area extends to 40×40 so the toggle isn't fiddly to hit.
+    '::before': {
+      inset: '-10px',
+      content: '""',
+      position: 'absolute',
+    },
   },
   chevron: {
     transition: 'transform 0.2s ease',
