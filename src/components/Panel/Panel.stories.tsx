@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect } from 'storybook/test';
 import {
   Panel, PanelHeader, PanelTitle, PanelFooter,
 } from './Panel';
@@ -77,4 +78,23 @@ const CollapsiblePanel = ({ size }: { size?: 's' | 'm' }) => {
 export const Collapsible: Story = {
   args: { size: 'm', children: null },
   render: (args) => <CollapsiblePanel size={args.size} />,
+  // Runs in a real browser (vitest browser mode) with the compiled CSS
+  // applied, so it can assert paint-level behavior jsdom can't see — like
+  // the header divider dropping via :last-child when the body unmounts.
+  play: async ({ canvas, userEvent }) => {
+    const toggle = canvas.getByRole('button', { name: 'Toggle section' });
+    const header = toggle.closest('div') as HTMLElement;
+
+    await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
+    await expect(header).toHaveStyle({ borderBottomWidth: '1px' });
+
+    await userEvent.click(toggle);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.queryByText('Panel content goes here.')).not.toBeInTheDocument();
+    await expect(header).toHaveStyle({ borderBottomWidth: '0px' });
+
+    await userEvent.click(toggle);
+    await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
+    await expect(header).toHaveStyle({ borderBottomWidth: '1px' });
+  },
 };
