@@ -46,7 +46,7 @@ describe('Panel', () => {
       </Panel>,
     );
 
-    expect(small.querySelector('svg')).toHaveAttribute('width', '12');
+    expect(small.querySelector('svg')).toHaveAttribute('width', '14');
     expect(medium.querySelector('svg')).toHaveAttribute('width', '16');
   });
 
