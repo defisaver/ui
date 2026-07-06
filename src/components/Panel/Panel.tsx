@@ -8,8 +8,8 @@ import { text } from '../../tokens/typography.stylex';
 
 export type PanelSize = 's' | 'm';
 
-// Set once on <Panel size>; header, title and footer read it so consumers
-// never repeat the size on subcomponents.
+// Set once on <Panel size>; header and title read it so consumers never
+// repeat the size on subcomponents.
 const PanelSizeContext = createContext<PanelSize>('m');
 
 const styles = stylex.create({
@@ -101,22 +101,20 @@ const styles = stylex.create({
   chevronCollapsed: {
     transform: 'rotate(-90deg)',
   },
+  // One geometry regardless of panel size — Figma only specs the M case
+  // (36px total = 4px block padding around 28px controls, 8px inline);
+  // an S variant can be added when a design calls for one.
   footer: {
     gap: space.s2,
-    paddingBlock: space.s2,
+    paddingBlock: space.s1,
+    paddingInline: space.s2,
     alignItems: 'center',
+    boxSizing: 'border-box',
     display: 'flex',
     justifyContent: 'space-between',
-    paddingInlineEnd: space.s2,
-    paddingInlineStart: space.s2_5,
     borderTopColor: colors.surfaceBorderSurface,
     borderTopStyle: 'solid',
     borderTopWidth: '1px',
-  },
-  footerS: {
-    minHeight: '28px',
-  },
-  footerM: {
     minHeight: '36px',
   },
 });
@@ -215,16 +213,8 @@ export const PanelTitle = ({
   );
 };
 
-export const PanelFooter = ({ className, children }: PanelProps) => {
-  const size = useContext(PanelSizeContext);
-  return (
-    <div
-      {...withClassName(
-        stylex.props(styles.footer, size === 'm' ? styles.footerM : styles.footerS),
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
-};
+export const PanelFooter = ({ className, children }: PanelProps) => (
+  <div {...withClassName(stylex.props(styles.footer), className)}>
+    {children}
+  </div>
+);
