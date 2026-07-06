@@ -26,14 +26,14 @@ const styles = stylex.create({
   },
   header: {
     gap: space.s2,
-    // 10px left, 8px elsewhere (same for both sizes); the size heights fall
-    // out of the vertical padding + title line: 8+12+8=28 (s), 8+20+8=36 (m)
-    paddingBlock: space.s2,
     alignItems: 'center',
+    boxSizing: 'border-box',
     display: 'flex',
     justifyContent: 'space-between',
     paddingInlineEnd: space.s2,
-    paddingInlineStart: space.s2_5,
+    // 12px; when the title is collapsible its toggle pulls itself back to
+    // the 8px edge with a -4px start margin — the header never needs to know
+    paddingInlineStart: space.s3,
     borderBottomColor: colors.surfaceBorderSurface,
     borderBottomStyle: 'solid',
     // The divider only separates the header from content below it. When the
@@ -43,11 +43,14 @@ const styles = stylex.create({
     borderTopLeftRadius: `calc(${radius.xl} - 1px)`,
     borderTopRightRadius: `calc(${radius.xl} - 1px)`,
   },
+  // Total heights: s 44 = 8+28+8, m 56 = 10+36+10 (content row 28/36)
   headerS: {
-    minHeight: '28px',
+    paddingBlock: space.s2,
+    minHeight: '44px',
   },
   headerM: {
-    minHeight: '36px',
+    paddingBlock: space.s2_5,
+    minHeight: '56px',
   },
   title: {
     gap: space.s1_5,
@@ -76,16 +79,12 @@ const styles = stylex.create({
     display: 'inline-flex',
     flexShrink: 0,
     justifyContent: 'center',
+    // Pulls the button from the header's 12px padding edge to 8px —
+    // collapsible headers get their tighter left padding without the header
+    // knowing about the title.
+    marginInlineStart: '-4px',
     height: '20px',
     width: '20px',
-  },
-  // The 20x20 hit area overhangs the 12px icon footprint (top/bottom/left)
-  // so it doesn't inflate the 28px header (8+12+8) and the icon stays on the
-  // 10px padding edge. No overhang toward the text — the hover circle would
-  // eat the gap to the title.
-  toggleS: {
-    marginBlock: '-4px',
-    marginInlineStart: '-4px',
   },
   chevron: {
     transition: 'transform 0.2s ease',
@@ -139,7 +138,7 @@ const withClassName = (sx: ReturnType<typeof stylex.props>, className?: string) 
 // Rendered with currentColor so it follows the title's token color.
 // Default (expanded) points down; collapsed rotates to point right.
 const Chevron = ({ size, collapsed }: { size: PanelSize; collapsed: boolean }) => {
-  const px = size === 'm' ? 16 : 12;
+  const px = size === 'm' ? 16 : 14;
   return (
     <svg
       width={px}
@@ -150,12 +149,9 @@ const Chevron = ({ size, collapsed }: { size: PanelSize; collapsed: boolean }) =
       aria-hidden="true"
       {...stylex.props(styles.chevron, collapsed && styles.chevronCollapsed)}
     >
-      <path
-        d="M9 5.00049L6.09642 7.90406C6.04317 7.95732 5.95683 7.95732 5.90358 7.90406L3 5.00049"
-        stroke="currentColor"
-        strokeLinecap="round"
-      />
+      <path d="M9 5L6.09642 7.90358C6.04317 7.95683 5.95683 7.95683 5.90358 7.90358L3 5" stroke="currentColor" strokeLinecap="round" />
     </svg>
+
   );
 };
 
@@ -200,7 +196,7 @@ export const PanelTitle = ({
           aria-expanded={!collapsed}
           aria-label="Toggle section"
           onClick={onToggle}
-          {...stylex.props(styles.toggle, size === 's' && styles.toggleS)}
+          {...stylex.props(styles.toggle)}
         >
           <Chevron size={size} collapsed={collapsed} />
         </button>
