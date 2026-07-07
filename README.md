@@ -15,6 +15,29 @@ import '@defisaver/ui/styles.css'; // once, at the app entry
 
 That works identically under esbuild, Vite, and Next.js — no Babel, no plugins.
 
+### Customizing components from the app
+
+Library styles are emitted inside `@layer`, and unlayered CSS beats layered CSS regardless of specificity. So the escape hatch is the one the app already knows: pass a `className` and write plain (S)CSS — a single class selector is enough, and media queries work like anywhere else:
+
+```scss
+// ChartPanel.module.scss — wins over the library defaults, no !important
+.chartHeader {
+  min-height: 44px;
+  justify-content: flex-start;
+
+  @media (max-width: 750px) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+```
+
+```tsx
+<PanelHeader className={styles.chartHeader}>…</PanelHeader>
+```
+
+Only the properties you declare are overridden; everything else keeps the library value. The flip side: the library also yields to careless broad selectors (`.someParent span { … }`), same as any app-local component — keep overrides scoped to a class on the component itself.
+
 ### Design tokens
 
 Tokens live in `src/tokens/*.stylex.ts` (`colors`, `space`, `radius`, `text`). The **spacing and radius scales are fully defined** — they're stable primitives, and as `defineConsts` they're inlined at compile time (zero CSS cost when unused). **Colors and typography are deliberately minimal**: a token is added the moment a component being ported needs it, never speculatively. The old app's full token inventory was audited (see git history / `~/.claude/plans` analysis) but not imported wholesale — most of it is legacy design debt, and every unused `defineVars` entry would ship as dead CSS to consumers. **Figma is the intended long-term source of truth for the token set** (sync pipeline TBD).

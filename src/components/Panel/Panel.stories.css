@@ -1,0 +1,15 @@
+/* Consumer-side CSS for the CustomizedHeader story. Deliberately a plain,
+   unlayered stylesheet — the exact thing an app (S)CSS module compiles to.
+   Library styles live in @layer, so these single-class rules win on every
+   declared property, media queries included, with no specificity fight. */
+
+.story-chart-header {
+  min-height: 44px;
+  justify-content: flex-start;
+}
+
+@media (max-width: 600px) {
+  .story-chart-header {
+    min-height: 36px;
+  }
+}

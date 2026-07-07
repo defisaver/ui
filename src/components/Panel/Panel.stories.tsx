@@ -6,6 +6,7 @@ import {
   Panel, PanelHeader, PanelTitle, PanelBody, PanelFooter,
 } from './Panel';
 import type { PanelSize } from './Panel';
+import './Panel.stories.css';
 
 // Storybook's args typing intersects Panel's controlled/uncontrolled prop
 // union into `never`, so stories see a flattened shape. The union still
@@ -268,6 +269,33 @@ const ControlledPanel = () => {
 export const Controlled: Story = {
   args: { children: null },
   render: () => <ControlledPanel />,
+};
+
+// The styling escape hatch: library styles are emitted inside @layer, so a
+// consumer className with plain unlayered CSS overrides them on any declared
+// property — media queries included — without specificity tricks. See
+// Panel.stories.css for the "app-side" rules this story exercises.
+export const CustomizedHeader: Story = {
+  args: {
+    size: 'm',
+    children: (
+      <>
+        <PanelHeader className="story-chart-header">
+          <PanelTitle>Chart</PanelTitle>
+          <span style={{ color: '#71838F', fontSize: 12 }}>1D</span>
+        </PanelHeader>
+        {body}
+      </>
+    ),
+  },
+  play: async ({ canvas }) => {
+    const header = canvas.getByText('Chart').closest('div') as HTMLElement;
+
+    // Consumer declarations win over the layered library styles…
+    await expect(header).toHaveStyle({ minHeight: '44px', justifyContent: 'flex-start' });
+    // …while everything they don't declare still comes from the library.
+    await expect(header).toHaveStyle({ borderBottomWidth: '1px', paddingInlineStart: '12px' });
+  },
 };
 
 // Everything side by side for quick human eyeballing against Figma.
