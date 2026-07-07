@@ -1,5 +1,5 @@
 import {
-  createContext, useContext, useId, useMemo,
+  createContext, useCallback, useContext, useId, useMemo, useState,
 } from 'react';
 import type { ReactNode } from 'react';
 import * as stylex from '@stylexjs/stylex';
@@ -10,17 +10,23 @@ import { text } from '../../tokens/typography.stylex';
 
 export type PanelSize = 's' | 'm';
 
-// Set once on <Panel>; header and title read it so consumers configure
+// Set once on <Panel>; header, title and body read it so consumers configure
 // everything (size, collapse) in one place instead of wiring props through
 // the tree. The chevron toggle renders inside PanelTitle because the title
 // is what remains visible when a panel is collapsed.
 interface PanelContextValue {
   size: PanelSize;
+  collapsible: boolean;
   collapsed: boolean;
-  onToggle?: () => void;
+  onToggle: () => void;
 }
 
-const PanelContext = createContext<PanelContextValue>({ size: 'm', collapsed: false });
+const PanelContext = createContext<PanelContextValue>({
+  size: 'm',
+  collapsible: false,
+  collapsed: false,
+  onToggle: () => {},
+});
 
 const styles = stylex.create({
   panel: {
@@ -134,14 +140,28 @@ interface PanelProps {
   children: ReactNode;
 }
 
-interface PanelRootProps extends PanelProps {
-  size?: PanelSize;
-  // Collapse is consumer-owned: passing onToggle is what makes a panel
-  // collapsible (the title grows its chevron toggle); the consumer keeps
-  // the collapsed state and conditionally renders the body.
-  collapsed?: boolean;
-  onToggle?: () => void;
+// Collapse comes in two flavors, and the union makes half-wired states
+// unrepresentable (`collapsed` without `onToggle` is a compile error):
+// - Uncontrolled (the common case): pass `collapsible` (or `defaultCollapsed`,
+//   which implies it) and Panel owns the state — PanelBody hides itself.
+// - Controlled (escape hatch): pass `collapsed` + `onToggle` together and the
+//   consumer owns the state (persistence, expand-all, etc.).
+interface UncontrolledCollapseProps {
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
+  collapsed?: never;
+  onToggle?: never;
 }
+
+interface ControlledCollapseProps {
+  collapsed: boolean;
+  onToggle: () => void;
+  collapsible?: never;
+  defaultCollapsed?: never;
+}
+
+type PanelRootProps = PanelProps & { size?: PanelSize }
+  & (UncontrolledCollapseProps | ControlledCollapseProps);
 
 // stylex.props() produces the atomic class list; append the caller's
 // className after it so the external class survives the merge.
@@ -175,10 +195,25 @@ export const Panel = ({
   className,
   children,
   size = 'm',
-  collapsed = false,
+  collapsible = false,
+  defaultCollapsed,
+  collapsed: controlledCollapsed,
   onToggle,
 }: PanelRootProps) => {
-  const context = useMemo(() => ({ size, collapsed, onToggle }), [size, collapsed, onToggle]);
+  const [ownCollapsed, setOwnCollapsed] = useState(defaultCollapsed ?? false);
+  const toggleOwn = useCallback(() => setOwnCollapsed((c) => !c), []);
+
+  const isControlled = controlledCollapsed !== undefined;
+  const context = useMemo(() => ({
+    size,
+    collapsible: isControlled || collapsible || defaultCollapsed !== undefined,
+    collapsed: isControlled ? controlledCollapsed : ownCollapsed,
+    onToggle: onToggle ?? toggleOwn,
+  }), [
+    size, isControlled, collapsible, defaultCollapsed,
+    controlledCollapsed, ownCollapsed, onToggle, toggleOwn,
+  ]);
+
   return (
     <PanelContext.Provider value={context}>
       <div {...withClassName(stylex.props(styles.panel), className)}>{children}</div>
@@ -201,7 +236,9 @@ export const PanelHeader = ({ className, children }: PanelProps) => {
 };
 
 export const PanelTitle = ({ className, children }: PanelProps) => {
-  const { size, collapsed, onToggle } = useContext(PanelContext);
+  const {
+    size, collapsible, collapsed, onToggle,
+  } = useContext(PanelContext);
   // Labels the toggle with the title text, so screen readers hear
   // "Positions, collapsed" instead of a generic name shared by every panel.
   const labelId = useId();
@@ -212,7 +249,7 @@ export const PanelTitle = ({ className, children }: PanelProps) => {
         className,
       )}
     >
-      {onToggle && (
+      {collapsible && (
         <button
           type="button"
           aria-expanded={!collapsed}
@@ -228,8 +265,24 @@ export const PanelTitle = ({ className, children }: PanelProps) => {
   );
 };
 
-export const PanelFooter = ({ className, children }: PanelProps) => (
-  <div {...withClassName(stylex.props(styles.footer), className)}>
-    {children}
-  </div>
-);
+// Unmounts its children while the panel is collapsed. Unmounting (rather
+// than hiding) is what makes the header the panel's :last-child, which drops
+// the header divider — and it resets child state on collapse, like before
+// when consumers wrote `{!collapsed && body}` themselves.
+export const PanelBody = ({ className, children }: PanelProps) => {
+  const { collapsed } = useContext(PanelContext);
+  if (collapsed) return null;
+  return <div className={className}>{children}</div>;
+};
+
+export const PanelFooter = ({ className, children }: PanelProps) => {
+  // A collapsed panel shows only its header — footer actions (pagination
+  // etc.) operate on the hidden body, so they collapse with it.
+  const { collapsed } = useContext(PanelContext);
+  if (collapsed) return null;
+  return (
+    <div {...withClassName(stylex.props(styles.footer), className)}>
+      {children}
+    </div>
+  );
+};

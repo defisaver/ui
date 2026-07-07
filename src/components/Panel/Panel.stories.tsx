@@ -1,14 +1,29 @@
 import { useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import {
-  Panel, PanelHeader, PanelTitle, PanelFooter,
+  Panel, PanelHeader, PanelTitle, PanelBody, PanelFooter,
 } from './Panel';
+import type { PanelSize } from './Panel';
+
+// Storybook's args typing intersects Panel's controlled/uncontrolled prop
+// union into `never`, so stories see a flattened shape. The union still
+// guards real consumers — only this file opts out.
+type PanelStoryProps = {
+  children: ReactNode;
+  className?: string;
+  size?: PanelSize;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
+  collapsed?: boolean;
+  onToggle?: () => void;
+};
+const PanelStory = Panel as (props: PanelStoryProps) => ReactNode;
 
 const meta = {
   title: 'Layout/Panel',
-  component: Panel,
+  component: PanelStory,
   argTypes: {
     size: { control: 'radio', options: ['s', 'm'] },
   },
@@ -21,12 +36,16 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof Panel>;
+} satisfies Meta<typeof PanelStory>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const body = <div style={{ padding: 16, minHeight: 120 }}>Panel content goes here.</div>;
+const body = (
+  <PanelBody>
+    <div style={{ padding: 16, minHeight: 120 }}>Panel content goes here.</div>
+  </PanelBody>
+);
 
 // Placeholder 28px controls per the Figma footer spec — replaced by a real
 // Pagination component when the DS grows one.
@@ -92,18 +111,25 @@ export const HeaderOnly: Story = {
   },
 };
 
-// Static fixture of the collapsed state: right-pointing chevron, no body,
-// no divider. Deterministic on first render — the interactive Collapsible
-// story always *starts* open, so visual baselines need this one.
+// Static fixture of the collapsed state: right-pointing chevron, body and
+// footer unmounted, no divider. Deterministic on first render — the
+// interactive Collapsible story always *starts* open, so visual baselines
+// need this one.
 export const Collapsed: Story = {
   args: {
     size: 'm',
-    collapsed: true,
-    onToggle: () => {},
+    defaultCollapsed: true,
     children: (
-      <PanelHeader>
-        <PanelTitle>Section name</PanelTitle>
-      </PanelHeader>
+      <>
+        <PanelHeader>
+          <PanelTitle>Section name</PanelTitle>
+        </PanelHeader>
+        {body}
+        <PanelFooter>
+          <span>Footer left</span>
+          <span>Footer right</span>
+        </PanelFooter>
+      </>
     ),
   },
 };
@@ -160,7 +186,7 @@ export const LongTitle: Story = {
   ],
   args: {
     size: 'm',
-    onToggle: () => {},
+    collapsible: true,
     children: (
       <>
         <PanelHeader>
@@ -174,24 +200,25 @@ export const LongTitle: Story = {
   },
 };
 
-// Consumer owns the collapse state: one useState, conditionally render the
-// body. When collapsed, the header becomes the Panel's last child and its
-// bottom divider is dropped automatically.
-const CollapsiblePanel = ({ size }: { size?: 's' | 'm' }) => {
-  const [collapsed, setCollapsed] = useState(false);
-  return (
-    <Panel size={size} collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)}>
-      <PanelHeader>
-        <PanelTitle>Section name</PanelTitle>
-      </PanelHeader>
-      {!collapsed && body}
-    </Panel>
-  );
-};
-
+// The one-prop collapse path: Panel owns the state, PanelBody and PanelFooter
+// unmount themselves while collapsed.
 export const Collapsible: Story = {
-  args: { size: 'm', children: null },
-  render: (args) => <CollapsiblePanel size={args.size} />,
+  args: {
+    size: 'm',
+    collapsible: true,
+    children: (
+      <>
+        <PanelHeader>
+          <PanelTitle>Section name</PanelTitle>
+        </PanelHeader>
+        {body}
+        <PanelFooter>
+          <span>Footer left</span>
+          <span>Footer right</span>
+        </PanelFooter>
+      </>
+    ),
+  },
   // Runs in a real browser (vitest browser mode) with the compiled CSS
   // applied, so it can assert paint-level behavior jsdom can't see — like
   // the header divider dropping via :last-child when the body unmounts.
@@ -200,17 +227,47 @@ export const Collapsible: Story = {
     const header = toggle.closest('div') as HTMLElement;
 
     await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
+    await expect(canvas.getByText('Footer left')).toBeInTheDocument();
     await expect(header).toHaveStyle({ borderBottomWidth: '1px' });
 
     await userEvent.click(toggle);
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(canvas.queryByText('Panel content goes here.')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Footer left')).not.toBeInTheDocument();
     await expect(header).toHaveStyle({ borderBottomWidth: '0px' });
 
     await userEvent.click(toggle);
     await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
     await expect(header).toHaveStyle({ borderBottomWidth: '1px' });
   },
+};
+
+// The controlled escape hatch: consumer owns the state (persistence,
+// expand-all…) by passing `collapsed` + `onToggle` together.
+const ControlledPanel = () => {
+  const [collapsed, setCollapsed] = useState(true);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <button
+        type="button"
+        style={{ ...controlStyle, width: 'auto', paddingInline: 12 }}
+        onClick={() => setCollapsed((c) => !c)}
+      >
+        Toggle from outside
+      </button>
+      <Panel collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)}>
+        <PanelHeader>
+          <PanelTitle>Section name</PanelTitle>
+        </PanelHeader>
+        {body}
+      </Panel>
+    </div>
+  );
+};
+
+export const Controlled: Story = {
+  args: { children: null },
+  render: () => <ControlledPanel />,
 };
 
 // Everything side by side for quick human eyeballing against Figma.
@@ -238,10 +295,11 @@ export const Gallery: Story = {
           <span>Footer right</span>
         </PanelFooter>
       </Panel>
-      <Panel size="m" collapsed onToggle={() => {}}>
+      <Panel size="m" defaultCollapsed>
         <PanelHeader>
           <PanelTitle>Collapsed</PanelTitle>
         </PanelHeader>
+        {body}
       </Panel>
     </div>
   ),

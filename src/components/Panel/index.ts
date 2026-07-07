@@ -1,3 +1,3 @@
 export {
-  Panel, PanelHeader, PanelTitle, PanelFooter,
+  Panel, PanelHeader, PanelTitle, PanelBody, PanelFooter,
 } from './Panel';
