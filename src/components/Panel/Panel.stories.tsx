@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import {
@@ -11,12 +12,36 @@ const meta = {
   argTypes: {
     size: { control: 'radio', options: ['s', 'm'] },
   },
+  // Panels are width:100% — constrain stories to a realistic column so
+  // proportions match how panels sit in the app.
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: 480 }}>
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof Panel>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 const body = <div style={{ padding: 16, minHeight: 120 }}>Panel content goes here.</div>;
+
+// Placeholder 28px controls per the Figma footer spec — replaced by a real
+// Pagination component when the DS grows one.
+const controlStyle: CSSProperties = {
+  alignItems: 'center',
+  background: 'transparent',
+  border: '1px solid #252F37',
+  borderRadius: 6,
+  color: '#B2C1CC',
+  cursor: 'pointer',
+  display: 'inline-flex',
+  height: 28,
+  justifyContent: 'center',
+  width: 28,
+};
 
 export const SizeS: Story = {
   args: {
@@ -49,6 +74,100 @@ export const SizeM: Story = {
           <span>Footer left</span>
           <span>Footer right</span>
         </PanelFooter>
+      </>
+    ),
+  },
+};
+
+// Header as the only child — its bottom divider is dropped via :last-child
+// so it doesn't double up with the Panel's own border.
+export const HeaderOnly: Story = {
+  args: {
+    size: 'm',
+    children: (
+      <PanelHeader>
+        <PanelTitle>Section name</PanelTitle>
+      </PanelHeader>
+    ),
+  },
+};
+
+// Static fixture of the collapsed state: right-pointing chevron, no body,
+// no divider. Deterministic on first render — the interactive Collapsible
+// story always *starts* open, so visual baselines need this one.
+export const Collapsed: Story = {
+  args: {
+    size: 'm',
+    children: (
+      <PanelHeader>
+        <PanelTitle collapsible collapsed>
+          Section name
+        </PanelTitle>
+      </PanelHeader>
+    ),
+  },
+};
+
+// Title + secondary info competing for header space (space-between + gap).
+export const HeaderWithActions: Story = {
+  args: {
+    size: 'm',
+    children: (
+      <>
+        <PanelHeader>
+          <PanelTitle>Section name</PanelTitle>
+          <span style={{ color: '#71838F', fontSize: 12 }}>Last updated 2m ago</span>
+        </PanelHeader>
+        {body}
+      </>
+    ),
+  },
+};
+
+// The Figma footer example: 28px-tall controls inside the 36px footer
+// (4px block / 8px inline padding).
+export const FooterWithPagination: Story = {
+  args: {
+    size: 'm',
+    children: (
+      <>
+        <PanelHeader>
+          <PanelTitle>Section name</PanelTitle>
+        </PanelHeader>
+        {body}
+        <PanelFooter>
+          <span style={{ color: '#71838F', fontSize: 12 }}>12 items</span>
+          <span style={{ display: 'inline-flex', gap: 4 }}>
+            <button type="button" style={controlStyle}>‹</button>
+            <button type="button" style={controlStyle}>›</button>
+          </span>
+        </PanelFooter>
+      </>
+    ),
+  },
+};
+
+// Edge case: long title in a narrow panel. Documents current behavior —
+// the title wraps and the header grows past its min-height (no truncation
+// styling yet).
+export const LongTitle: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: 280 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    size: 'm',
+    children: (
+      <>
+        <PanelHeader>
+          <PanelTitle collapsible>
+            Automated strategies for the Maker protocol on Arbitrum
+          </PanelTitle>
+        </PanelHeader>
+        {body}
       </>
     ),
   },
@@ -97,4 +216,40 @@ export const Collapsible: Story = {
     await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
     await expect(header).toHaveStyle({ borderBottomWidth: '1px' });
   },
+};
+
+// Everything side by side for quick human eyeballing against Figma.
+export const Gallery: Story = {
+  args: { children: null },
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Panel size="s">
+        <PanelHeader>
+          <PanelTitle>Size S</PanelTitle>
+        </PanelHeader>
+        {body}
+        <PanelFooter>
+          <span>Footer left</span>
+          <span>Footer right</span>
+        </PanelFooter>
+      </Panel>
+      <Panel size="m">
+        <PanelHeader>
+          <PanelTitle>Size M</PanelTitle>
+        </PanelHeader>
+        {body}
+        <PanelFooter>
+          <span>Footer left</span>
+          <span>Footer right</span>
+        </PanelFooter>
+      </Panel>
+      <Panel size="m">
+        <PanelHeader>
+          <PanelTitle collapsible collapsed>
+            Collapsed
+          </PanelTitle>
+        </PanelHeader>
+      </Panel>
+    </div>
+  ),
 };
