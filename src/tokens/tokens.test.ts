@@ -9,10 +9,10 @@ import { text } from './typography.stylex';
 // and the suite goes red.
 const styles = stylex.create({
   all: {
-    padding: `${space.s3} ${space.s4}`,
+    padding: `${space.px12} ${space.px16}`,
     borderColor: colors.surfaceShade,
     borderRadius: { default: radius.xl, ':hover': radius.fullyRounded },
-    gap: { default: space.s2, ':hover': space.s0_25 },
+    gap: { default: space.px8, ':hover': space.px1 },
     backgroundColor: colors.surface,
     color: colors.textSecondary,
     fontSize: text.sizeRegular,

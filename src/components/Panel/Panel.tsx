@@ -35,15 +35,15 @@ const styles = stylex.create({
     width: '100%',
   },
   header: {
-    gap: space.s2,
+    gap: space.px8,
     alignItems: 'center',
     boxSizing: 'border-box',
     display: 'flex',
     justifyContent: 'space-between',
-    paddingInlineEnd: space.s2,
+    paddingInlineEnd: space.px8,
     // 12px; when the title is collapsible its toggle pulls itself back to
     // the 8px edge with a -4px start margin — the header never needs to know
-    paddingInlineStart: space.s3,
+    paddingInlineStart: space.px12,
     borderBottomColor: colors.surfaceBorderSurface,
     borderBottomStyle: 'solid',
     // The divider only separates the header from content below it. When the
@@ -55,15 +55,15 @@ const styles = stylex.create({
   },
   // Total heights: s 44 = 8+28+8, m 56 = 10+36+10 (content row 28/36)
   headerS: {
-    paddingBlock: space.s2,
+    paddingBlock: space.px8,
     minHeight: '44px',
   },
   headerM: {
-    paddingBlock: space.s2_5,
+    paddingBlock: space.px10,
     minHeight: '56px',
   },
   title: {
-    gap: space.s1_5,
+    gap: space.px6,
     alignItems: 'center',
     color: colors.textSecondary,
     display: 'inline-flex',
@@ -115,9 +115,9 @@ const styles = stylex.create({
   // (36px total = 4px block padding around 28px controls, 8px inline);
   // an S variant can be added when a design calls for one.
   footer: {
-    gap: space.s2,
-    paddingBlock: space.s1,
-    paddingInline: space.s2,
+    gap: space.px8,
+    paddingBlock: space.px4,
+    paddingInline: space.px8,
     alignItems: 'center',
     boxSizing: 'border-box',
     display: 'flex',
