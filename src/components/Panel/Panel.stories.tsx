@@ -98,11 +98,11 @@ export const HeaderOnly: Story = {
 export const Collapsed: Story = {
   args: {
     size: 'm',
+    collapsed: true,
+    onToggle: () => {},
     children: (
       <PanelHeader>
-        <PanelTitle collapsible collapsed>
-          Section name
-        </PanelTitle>
+        <PanelTitle>Section name</PanelTitle>
       </PanelHeader>
     ),
   },
@@ -160,10 +160,11 @@ export const LongTitle: Story = {
   ],
   args: {
     size: 'm',
+    onToggle: () => {},
     children: (
       <>
         <PanelHeader>
-          <PanelTitle collapsible>
+          <PanelTitle>
             Automated strategies for the Maker protocol on Arbitrum
           </PanelTitle>
         </PanelHeader>
@@ -179,15 +180,9 @@ export const LongTitle: Story = {
 const CollapsiblePanel = ({ size }: { size?: 's' | 'm' }) => {
   const [collapsed, setCollapsed] = useState(false);
   return (
-    <Panel size={size}>
+    <Panel size={size} collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)}>
       <PanelHeader>
-        <PanelTitle
-          collapsible
-          collapsed={collapsed}
-          onToggle={() => setCollapsed((c) => !c)}
-        >
-          Section name
-        </PanelTitle>
+        <PanelTitle>Section name</PanelTitle>
       </PanelHeader>
       {!collapsed && body}
     </Panel>
@@ -201,7 +196,7 @@ export const Collapsible: Story = {
   // applied, so it can assert paint-level behavior jsdom can't see — like
   // the header divider dropping via :last-child when the body unmounts.
   play: async ({ canvas, userEvent }) => {
-    const toggle = canvas.getByRole('button', { name: 'Toggle section' });
+    const toggle = canvas.getByRole('button', { name: 'Section name' });
     const header = toggle.closest('div') as HTMLElement;
 
     await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
@@ -243,11 +238,9 @@ export const Gallery: Story = {
           <span>Footer right</span>
         </PanelFooter>
       </Panel>
-      <Panel size="m">
+      <Panel size="m" collapsed onToggle={() => {}}>
         <PanelHeader>
-          <PanelTitle collapsible collapsed>
-            Collapsed
-          </PanelTitle>
+          <PanelTitle>Collapsed</PanelTitle>
         </PanelHeader>
       </Panel>
     </div>

@@ -30,18 +30,18 @@ describe('Panel', () => {
     expect(panel.classList.length).toBeGreaterThan(1);
   });
 
-  it('sizes the collapse chevron from the Panel size context', () => {
+  it('sizes the collapse chevron from the Panel size', () => {
     const { container: small } = render(
-      <Panel size="s">
+      <Panel size="s" onToggle={() => {}}>
         <PanelHeader>
-          <PanelTitle collapsible>Title</PanelTitle>
+          <PanelTitle>Title</PanelTitle>
         </PanelHeader>
       </Panel>,
     );
     const { container: medium } = render(
-      <Panel size="m">
+      <Panel size="m" onToggle={() => {}}>
         <PanelHeader>
-          <PanelTitle collapsible>Title</PanelTitle>
+          <PanelTitle>Title</PanelTitle>
         </PanelHeader>
       </Panel>,
     );
@@ -53,24 +53,34 @@ describe('Panel', () => {
   it('exposes collapse state and fires onToggle', async () => {
     const user = userEvent.setup();
     const onToggle = vi.fn();
-    const { rerender } = render(
-      <PanelTitle collapsible collapsed={false} onToggle={onToggle}>Title</PanelTitle>,
+    const ui = (collapsed: boolean) => (
+      <Panel collapsed={collapsed} onToggle={onToggle}>
+        <PanelHeader>
+          <PanelTitle>Positions</PanelTitle>
+        </PanelHeader>
+      </Panel>
     );
+    const { rerender } = render(ui(false));
 
-    const toggle = screen.getByRole('button', { name: 'Toggle section' });
+    // The toggle takes its accessible name from the title text
+    const toggle = screen.getByRole('button', { name: 'Positions' });
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
     await user.click(toggle);
     expect(onToggle).toHaveBeenCalledTimes(1);
 
-    rerender(
-      <PanelTitle collapsible collapsed onToggle={onToggle}>Title</PanelTitle>,
-    );
+    rerender(ui(true));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('renders no toggle button when not collapsible', () => {
-    render(<PanelTitle>Title</PanelTitle>);
+  it('renders no toggle button when the panel is not collapsible', () => {
+    render(
+      <Panel>
+        <PanelHeader>
+          <PanelTitle>Title</PanelTitle>
+        </PanelHeader>
+      </Panel>,
+    );
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });

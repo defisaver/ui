@@ -1,4 +1,6 @@
-import { createContext, useContext } from 'react';
+import {
+  createContext, useContext, useId, useMemo,
+} from 'react';
 import type { ReactNode } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '../../tokens/colors.stylex';
@@ -8,9 +10,17 @@ import { text } from '../../tokens/typography.stylex';
 
 export type PanelSize = 's' | 'm';
 
-// Set once on <Panel size>; header and title read it so consumers never
-// repeat the size on subcomponents.
-const PanelSizeContext = createContext<PanelSize>('m');
+// Set once on <Panel>; header and title read it so consumers configure
+// everything (size, collapse) in one place instead of wiring props through
+// the tree. The chevron toggle renders inside PanelTitle because the title
+// is what remains visible when a panel is collapsed.
+interface PanelContextValue {
+  size: PanelSize;
+  collapsed: boolean;
+  onToggle?: () => void;
+}
+
+const PanelContext = createContext<PanelContextValue>({ size: 'm', collapsed: false });
 
 const styles = stylex.create({
   panel: {
@@ -126,10 +136,9 @@ interface PanelProps {
 
 interface PanelRootProps extends PanelProps {
   size?: PanelSize;
-}
-
-interface PanelTitleProps extends PanelProps {
-  collapsible?: boolean;
+  // Collapse is consumer-owned: passing onToggle is what makes a panel
+  // collapsible (the title grows its chevron toggle); the consumer keeps
+  // the collapsed state and conditionally renders the body.
   collapsed?: boolean;
   onToggle?: () => void;
 }
@@ -162,14 +171,23 @@ const Chevron = ({ size, collapsed }: { size: PanelSize; collapsed: boolean }) =
   );
 };
 
-export const Panel = ({ className, children, size = 'm' }: PanelRootProps) => (
-  <PanelSizeContext.Provider value={size}>
-    <div {...withClassName(stylex.props(styles.panel), className)}>{children}</div>
-  </PanelSizeContext.Provider>
-);
+export const Panel = ({
+  className,
+  children,
+  size = 'm',
+  collapsed = false,
+  onToggle,
+}: PanelRootProps) => {
+  const context = useMemo(() => ({ size, collapsed, onToggle }), [size, collapsed, onToggle]);
+  return (
+    <PanelContext.Provider value={context}>
+      <div {...withClassName(stylex.props(styles.panel), className)}>{children}</div>
+    </PanelContext.Provider>
+  );
+};
 
 export const PanelHeader = ({ className, children }: PanelProps) => {
-  const size = useContext(PanelSizeContext);
+  const { size } = useContext(PanelContext);
   return (
     <div
       {...withClassName(
@@ -182,14 +200,11 @@ export const PanelHeader = ({ className, children }: PanelProps) => {
   );
 };
 
-export const PanelTitle = ({
-  className,
-  children,
-  collapsible = false,
-  collapsed = false,
-  onToggle,
-}: PanelTitleProps) => {
-  const size = useContext(PanelSizeContext);
+export const PanelTitle = ({ className, children }: PanelProps) => {
+  const { size, collapsed, onToggle } = useContext(PanelContext);
+  // Labels the toggle with the title text, so screen readers hear
+  // "Positions, collapsed" instead of a generic name shared by every panel.
+  const labelId = useId();
   return (
     <span
       {...withClassName(
@@ -197,18 +212,18 @@ export const PanelTitle = ({
         className,
       )}
     >
-      {collapsible && (
+      {onToggle && (
         <button
           type="button"
           aria-expanded={!collapsed}
-          aria-label="Toggle section"
+          aria-labelledby={labelId}
           onClick={onToggle}
           {...stylex.props(styles.toggle)}
         >
           <Chevron size={size} collapsed={collapsed} />
         </button>
       )}
-      {children}
+      <span id={labelId}>{children}</span>
     </span>
   );
 };
