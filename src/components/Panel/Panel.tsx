@@ -29,7 +29,7 @@ const PanelContext = createContext<PanelContextValue>({
   size: 'm',
   collapsible: false,
   collapsed: false,
-  onToggle: () => {},
+  onToggle: () => { },
   labelId: '',
 });
 
@@ -48,7 +48,7 @@ const styles = stylex.create({
     borderColor: colors.surfaceBorderSurface,
     borderRadius: radius.xl,
     borderStyle: 'solid',
-    borderWidth: '1px',
+    borderWidth: '0.5px',
     overflow: 'hidden',
     backgroundColor: colors.surfaceShade,
     display: 'flex',
@@ -74,7 +74,7 @@ const styles = stylex.create({
     // The divider only separates the header from content below it. When the
     // header is the last child (e.g. a collapsed panel) it would stack against
     // the Panel's own bottom border, reading as a doubled line — so drop it.
-    borderBottomWidth: { default: '1px', ':last-child': '0' },
+    borderBottomWidth: { default: '0.5px', ':last-child': '0' },
     borderTopLeftRadius: `calc(${radius.xl} - 1px)`,
     borderTopRightRadius: `calc(${radius.xl} - 1px)`,
   },
@@ -232,7 +232,7 @@ const styles = stylex.create({
     justifyContent: 'space-between',
     borderTopColor: colors.surfaceBorderSurface,
     borderTopStyle: 'solid',
-    borderTopWidth: '1px',
+    borderTopWidth: '0.5px',
     minHeight: '36px',
   },
 });

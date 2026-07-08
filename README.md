@@ -2,18 +2,24 @@
 
 DeFi Saver design system — React components written in TypeScript and styled with [StyleX](https://stylexjs.com), **pre-compiled** so consumer apps need no StyleX tooling at all.
 
-> Local-only for now: the package is `private` and consumed via a packed tarball. npm publishing is a documented follow-up (see Roadmap).
+## Installation
 
-## How it works
+```bash
+npm i @defisaver/ui
+```
 
-StyleX needs a compiler, and defisaver-app's esbuild pipeline doesn't have one. So this repo compiles StyleX at **library build time** (`@stylexjs/rollup-plugin`): `dist/` contains plain ESM JavaScript with the atomic class names already inlined, plus a single static `dist/styles.css`. Consumers just do:
+Requires React 18+ as a peer dependency.
+
+## Usage
 
 ```tsx
 import { Panel, PanelHeader, PanelTitle, PanelFooter } from '@defisaver/ui';
 import '@defisaver/ui/styles.css'; // once, at the app entry
 ```
 
-That works identically under esbuild, Vite, and Next.js — no Babel, no plugins.
+## How it works
+
+StyleX needs a compiler, and defisaver-app's esbuild pipeline doesn't have one. So this repo compiles StyleX at **library build time** (`@stylexjs/rollup-plugin`): `dist/` contains plain ESM JavaScript with the atomic class names already inlined, plus a single static `dist/styles.css`. Consumers import the package and the stylesheet — that works identically under esbuild, Vite, and Next.js. No Babel, no plugins.
 
 ### Customizing components from the app
 
@@ -61,7 +67,9 @@ npm run build            # Rollup (pre-compile StyleX, emit styles.css) + d.ts
 npm run pack:local       # build + npm pack → defisaver-ui-x.y.z.tgz
 ```
 
-## Consuming from defisaver-app (local, for now)
+## Local development against a consumer app
+
+To test unpublished changes in a consumer (e.g. defisaver-app) before releasing:
 
 ```bash
 # here
@@ -71,7 +79,7 @@ npm run pack:local
 npm i ../../defisaver-ui/defisaver-ui-0.0.1.tgz
 ```
 
-Then import components and add `import '@defisaver/ui/styles.css'` once at the app entry.
+A tarball install behaves identically to a registry install, so swapping back to the published version is just a version number change.
 
 ## Adding a component
 
@@ -99,6 +107,10 @@ vite.config.ts         # internal toolchain: Storybook + Vitest (StyleX unplugin
 
 - Migrate components from `defisaver-app/client/src/elements/` in dependency order (Icon → primitives → composites)
 - GitHub Actions CI (lint / typecheck / test / build / build-storybook)
-- Changesets versioning + npm publishing under `@defisaver` (drop `"private": true`)
+- Changesets versioning + release automation
 - `./tokens.stylex` source subpath export for StyleX-enabled consumers (future Next.js site)
 - `createTheme`-based ThemeProvider so themes work without the app's `theme.scss`
+
+## License
+
+[ISC](LICENSE)
