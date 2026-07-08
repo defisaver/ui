@@ -38,6 +38,8 @@ Library styles are emitted inside `@layer`, and unlayered CSS beats layered CSS 
 
 Only the properties you declare are overridden; everything else keeps the library value. The flip side: the library also yields to careless broad selectors (`.someParent span { … }`), same as any app-local component — keep overrides scoped to a class on the component itself.
 
+**A repeated override is a bug report against the design system.** If several call sites override the same property (say, three headers all forcing `min-height: 44px`), that's not customization — it's a missing variant or token. Request it here instead of copying the override.
+
 ### Design tokens
 
 Tokens live in `src/tokens/*.stylex.ts` (`colors`, `space`, `radius`, `text`). The **spacing and radius scales are fully defined** — they're stable primitives, and as `defineConsts` they're inlined at compile time (zero CSS cost when unused). **Colors and typography are deliberately minimal**: a token is added the moment a component being ported needs it, never speculatively. The old app's full token inventory was audited (see git history / `~/.claude/plans` analysis) but not imported wholesale — most of it is legacy design debt, and every unused `defineVars` entry would ship as dead CSS to consumers. **Figma is the intended long-term source of truth for the token set** (sync pipeline TBD).
@@ -74,7 +76,7 @@ Then import components and add `import '@defisaver/ui/styles.css'` once at the a
 ## Adding a component
 
 1. Create `src/components/<Name>/` with `<Name>.tsx`, `<Name>.stories.tsx`, `<Name>.test.tsx`, `index.ts` (stories/tests are excluded from the build).
-2. Style with `stylex.create()`, using tokens from `src/tokens/` — add missing tokens there with `var(--app-var, fallback)` values, mirroring `defisaver-app/client/src/common/theme.scss`.
+2. Style with `stylex.create()`, using tokens from `src/tokens/` — add missing tokens there with `var(--app-var, fallback)` values, mirroring `defisaver-app/client/src/common/theme.scss`. Raw color literals in component styles **fail lint** (`propLimits` on `@stylexjs/valid-styles`) — a missing color means "add a token", never "inline a hex".
 3. Export it from `src/index.ts`.
 4. Verify: `npm run lint && npm run typecheck && npm test && npm run build`.
 

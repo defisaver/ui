@@ -227,6 +227,9 @@ export const Collapsible: Story = {
     const toggle = canvas.getByRole('button', { name: 'Section name' });
     const header = toggle.closest('div') as HTMLElement;
 
+    // M panels get the larger 28px button around the 16px chevron
+    await expect(toggle).toHaveStyle({ height: '28px', width: '28px' });
+
     await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
     await expect(canvas.getByText('Footer left')).toBeInTheDocument();
     await expect(header).toHaveStyle({ borderBottomWidth: '1px' });
@@ -240,6 +243,38 @@ export const Collapsible: Story = {
     await userEvent.click(toggle);
     await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
     await expect(header).toHaveStyle({ borderBottomWidth: '1px' });
+  },
+};
+
+// The toggle belongs to the header, not the title — so a header holding
+// something else entirely (tabs, a token pair…) still collapses. Without a
+// title to borrow a name from, the button falls back to its aria-label.
+export const CollapsibleWithoutTitle: Story = {
+  args: {
+    size: 'm',
+    collapsible: true,
+    children: (
+      <>
+        <PanelHeader>
+          <span style={{
+            color: '#B2C1CC', display: 'inline-flex', fontSize: 12, gap: 16,
+          }}
+          >
+            <span>Info</span>
+            <span style={{ color: '#71838F' }}>Depth</span>
+            <span style={{ color: '#71838F' }}>Trades</span>
+          </span>
+        </PanelHeader>
+        {body}
+      </>
+    ),
+  },
+  play: async ({ canvas, userEvent }) => {
+    const toggle = canvas.getByRole('button', { name: 'Toggle panel' });
+    await userEvent.click(toggle);
+    await expect(canvas.queryByText('Panel content goes here.')).not.toBeInTheDocument();
+    await userEvent.click(toggle);
+    await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
   },
 };
 

@@ -1,3 +1,4 @@
+import { createRef } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
@@ -120,6 +121,47 @@ describe('Panel', () => {
     rerender(ui(true));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('Content')).not.toBeInTheDocument();
+  });
+
+  it('collapses without a PanelTitle: the toggle lives in the header with a fallback name', async () => {
+    const user = userEvent.setup();
+    render(
+      <Panel collapsible>
+        <PanelHeader>
+          <span>Tabs go here</span>
+        </PanelHeader>
+        <PanelBody>Content</PanelBody>
+      </Panel>,
+    );
+
+    // No title to borrow a name from — the aria-label fallback applies
+    const toggle = screen.getByRole('button', { name: 'Toggle panel' });
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Content')).not.toBeInTheDocument();
+  });
+
+  it('forwards refs and rest props to the underlying elements', () => {
+    const panelRef = createRef<HTMLDivElement>();
+    const headerRef = createRef<HTMLDivElement>();
+    const titleRef = createRef<HTMLSpanElement>();
+    const bodyRef = createRef<HTMLDivElement>();
+    const footerRef = createRef<HTMLDivElement>();
+    render(
+      <Panel ref={panelRef} data-testid="panel">
+        <PanelHeader ref={headerRef} data-testid="header">
+          <PanelTitle ref={titleRef} data-testid="title">Title</PanelTitle>
+        </PanelHeader>
+        <PanelBody ref={bodyRef} data-testid="body">Content</PanelBody>
+        <PanelFooter ref={footerRef} data-testid="footer">Footer</PanelFooter>
+      </Panel>,
+    );
+
+    expect(panelRef.current).toBe(screen.getByTestId('panel'));
+    expect(headerRef.current).toBe(screen.getByTestId('header'));
+    expect(titleRef.current).toBe(screen.getByTestId('title'));
+    expect(bodyRef.current).toBe(screen.getByTestId('body'));
+    expect(footerRef.current).toBe(screen.getByTestId('footer'));
   });
 
   it('renders no toggle button when the panel is not collapsible', () => {
