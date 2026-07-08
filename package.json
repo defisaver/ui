@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "DeFi Saver design system — React components styled with StyleX, pre-compiled so consumers need no StyleX tooling.",
+  "license": "ISC",
   "type": "module",
   "sideEffects": [
     "**/*.css"
