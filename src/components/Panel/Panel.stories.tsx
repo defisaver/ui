@@ -130,8 +130,16 @@ export const Collapsed: Story = {
           <span>Footer left</span>
           <span>Footer right</span>
         </PanelFooter>
+        {/* Stays mounted while collapsed, so the header is never :last-child
+            here — the play assertion below proves the divider drops from the
+            collapse state (context), not from DOM structure. */}
+        <div aria-hidden="true" />
       </>
     ),
+  },
+  play: async ({ canvas }) => {
+    const header = canvas.getByText('Section name').closest('div') as HTMLElement;
+    await expect(header).toHaveStyle({ borderBottomWidth: '0px' });
   },
 };
 

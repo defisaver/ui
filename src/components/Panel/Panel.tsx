@@ -75,6 +75,13 @@ const styles = stylex.create({
   headerCollapsibleM: {
     paddingInlineStart: '42px',
   },
+  // The state-driven twin of the :last-child rule above: while collapsed the
+  // divider is gone no matter what stays mounted below the header (a portal
+  // placeholder, or a future animated body held at height 0 — the app's
+  // PortfolioSection needed a specificity hack for exactly this).
+  headerCollapsed: {
+    borderBottomWidth: '0',
+  },
   // Total heights: s 44 = 8+28+8, m 56 = 10+36+10 (content row 28/36)
   headerS: {
     paddingBlock: space.px8,
@@ -289,6 +296,7 @@ export const PanelHeader = forwardRef<HTMLDivElement, PanelSectionProps>(({
           styles.header,
           size === 'm' ? styles.headerM : styles.headerS,
           collapsible && (size === 'm' ? styles.headerCollapsibleM : styles.headerCollapsibleS),
+          collapsed && styles.headerCollapsed,
         ),
         className,
         style,
