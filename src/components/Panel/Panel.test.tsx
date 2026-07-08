@@ -51,7 +51,7 @@ describe('Panel', () => {
     expect(medium.querySelector('svg')).toHaveAttribute('width', '16');
   });
 
-  it('owns the collapse state when uncontrolled: toggle unmounts body and footer', async () => {
+  it('owns the collapse state when uncontrolled: clicking the toggle flips it', async () => {
     const user = userEvent.setup();
     render(
       <Panel collapsible>
@@ -63,19 +63,41 @@ describe('Panel', () => {
       </Panel>,
     );
 
-    // The toggle takes its accessible name from the title text
+    // The toggle takes its accessible name from the title text. Whether the
+    // folded content is actually invisible is CSS, asserted in the browser
+    // play tests — jsdom only sees the state.
     const toggle = screen.getByRole('button', { name: 'Positions' });
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText('Content')).toBeInTheDocument();
 
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText('Content')).not.toBeInTheDocument();
-    expect(screen.queryByText('Footer')).not.toBeInTheDocument();
 
     await user.click(toggle);
-    expect(screen.getByText('Content')).toBeInTheDocument();
-    expect(screen.getByText('Footer')).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('keeps collapsed content mounted, so child state survives a collapse', async () => {
+    const user = userEvent.setup();
+    render(
+      <Panel collapsible>
+        <PanelHeader>
+          <PanelTitle>Positions</PanelTitle>
+        </PanelHeader>
+        <PanelBody>
+          <input aria-label="Amount" />
+        </PanelBody>
+      </Panel>,
+    );
+
+    await user.type(screen.getByLabelText('Amount'), '1.5');
+
+    const toggle = screen.getByRole('button', { name: 'Positions' });
+    await user.click(toggle);
+    // Folded, not unmounted — the input and its value are still there
+    expect(screen.getByLabelText('Amount')).toHaveValue('1.5');
+
+    await user.click(toggle);
+    expect(screen.getByLabelText('Amount')).toHaveValue('1.5');
   });
 
   it('starts collapsed with defaultCollapsed (which implies collapsible)', async () => {
@@ -91,10 +113,9 @@ describe('Panel', () => {
 
     const toggle = screen.getByRole('button', { name: 'Positions' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText('Content')).not.toBeInTheDocument();
 
     await user.click(toggle);
-    expect(screen.getByText('Content')).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('defers to the consumer when controlled: state only moves via props', async () => {
@@ -116,11 +137,10 @@ describe('Panel', () => {
     // Clicking reports intent but does not flip state on its own
     await user.click(toggle);
     expect(onToggle).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Content')).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
     rerender(ui(true));
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText('Content')).not.toBeInTheDocument();
   });
 
   it('collapses without a PanelTitle: the toggle lives in the header with a fallback name', async () => {
@@ -138,7 +158,6 @@ describe('Panel', () => {
     const toggle = screen.getByRole('button', { name: 'Toggle panel' });
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText('Content')).not.toBeInTheDocument();
   });
 
   it('forwards refs and rest props to the underlying elements', () => {

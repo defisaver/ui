@@ -33,6 +33,16 @@ const PanelContext = createContext<PanelContextValue>({
   labelId: '',
 });
 
+// Fold motion, shared by the body/footer rows, the header divider and the
+// chevron so the collapse reads as one gesture. User-initiated enter/exit →
+// ease-out (quart); panels are section-sized, so the slow end of the
+// 150–250ms UI band, with the exit ~20% faster so closing feels snappy.
+// CSS picks the transition from the destination state, which is what makes
+// the two directions differ — and makes the animation interruptible.
+const foldEase = 'cubic-bezier(0.165, 0.84, 0.44, 1)';
+const expandMs = '250ms';
+const collapseMs = '200ms';
+
 const styles = stylex.create({
   panel: {
     borderColor: colors.surfaceBorderSurface,
@@ -47,6 +57,10 @@ const styles = stylex.create({
   },
   header: {
     gap: space.px8,
+    transition: {
+      default: `border-bottom-color ${expandMs} ${foldEase}`,
+      '@media (prefers-reduced-motion: reduce)': 'none',
+    },
     alignItems: 'center',
     boxSizing: 'border-box',
     display: 'flex',
@@ -76,11 +90,47 @@ const styles = stylex.create({
     paddingInlineStart: '42px',
   },
   // The state-driven twin of the :last-child rule above: while collapsed the
-  // divider is gone no matter what stays mounted below the header (a portal
-  // placeholder, or a future animated body held at height 0 — the app's
-  // PortfolioSection needed a specificity hack for exactly this).
+  // divider is gone no matter what stays mounted below the header — which is
+  // now always the case, since the body folds instead of unmounting. The
+  // divider fades via border-COLOR, never width: the header is border-box
+  // sized, so an animated width would grow the content area 1px mid-fold and
+  // jiggle the vertically-centered content, and fractional border widths
+  // render as flicker. Color is paint-only — geometry never moves. The
+  // invisible 1px border stays on the collapsed header; it sits against the
+  // panel's own border and changes nothing visually.
   headerCollapsed: {
-    borderBottomWidth: '0',
+    transition: {
+      default: `border-bottom-color ${collapseMs} ${foldEase}`,
+      '@media (prefers-reduced-motion: reduce)': 'none',
+    },
+    borderBottomColor: 'transparent',
+  },
+  // The collapse mechanism: a grid row transitioning 1fr ↔ 0fr folds any
+  // content height with zero measurement JS. The outer div clips, the spacer
+  // breaks the min-size chain (an fr track can't shrink below its item's
+  // min-height, and consumer content may set one), and `visibility` — part
+  // of the transition, so it flips only when the closing fold finishes —
+  // removes hidden content from the a11y tree and tab order.
+  fold: {
+    overflow: 'hidden',
+    transition: {
+      default: `grid-template-rows ${expandMs} ${foldEase}, visibility ${expandMs}`,
+      '@media (prefers-reduced-motion: reduce)': 'none',
+    },
+    display: 'grid',
+    gridTemplateRows: '1fr',
+    visibility: 'visible',
+  },
+  foldCollapsed: {
+    transition: {
+      default: `grid-template-rows ${collapseMs} ${foldEase}, visibility ${collapseMs}`,
+      '@media (prefers-reduced-motion: reduce)': 'none',
+    },
+    gridTemplateRows: '0fr',
+    visibility: 'hidden',
+  },
+  foldSpacer: {
+    minHeight: 0,
   },
   // Total heights: s 44 = 8+28+8, m 56 = 10+36+10 (content row 28/36)
   headerS: {
@@ -109,7 +159,10 @@ const styles = stylex.create({
   toggle: {
     padding: 0,
     borderStyle: 'none',
-    transition: 'background-color 0.2s ease, scale 0.15s ease-out',
+    transition: {
+      default: 'background-color 0.2s ease, scale 0.15s ease-out',
+      '@media (prefers-reduced-motion: reduce)': 'none',
+    },
     alignItems: 'center',
     backgroundColor: { default: 'transparent', ':hover': colors.white5Hover },
     color: colors.textSecondary,
@@ -151,10 +204,19 @@ const styles = stylex.create({
       inset: '-6px',
     },
   },
+  // Paired with the fold — same easing and direction-aware durations, so the
+  // rotation and the body collapsing read as one gesture.
   chevron: {
-    transition: 'transform 0.2s ease',
+    transition: {
+      default: `transform ${expandMs} ${foldEase}`,
+      '@media (prefers-reduced-motion: reduce)': 'none',
+    },
   },
   chevronCollapsed: {
+    transition: {
+      default: `transform ${collapseMs} ${foldEase}`,
+      '@media (prefers-reduced-motion: reduce)': 'none',
+    },
     transform: 'rotate(-90deg)',
   },
   // One geometry regardless of panel size — Figma only specs the M case
@@ -345,16 +407,23 @@ export const PanelTitle = forwardRef<HTMLSpanElement, PanelTitleProps>(({
 });
 PanelTitle.displayName = 'PanelTitle';
 
-// Unmounts its children while the panel is collapsed. Unmounting (rather
-// than hiding) is what makes the header the panel's :last-child, which drops
-// the header divider — and it resets child state on collapse, like before
-// when consumers wrote `{!collapsed && body}` themselves.
+// Folds (rather than unmounts) while the panel is collapsed — see
+// styles.fold for the mechanism. Content stays mounted, so child state
+// (inputs, scroll positions) survives a collapse, like native <details>;
+// content that must truly unmount can be conditionally rendered by the
+// consumer in controlled mode. The consumer-facing div is the innermost
+// one, so className/style/ref behave exactly as before the fold existed.
 export const PanelBody = forwardRef<HTMLDivElement, PanelSectionProps>(({
   children, ...rest
 }, ref) => {
   const { collapsed } = useContext(PanelContext);
-  if (collapsed) return null;
-  return <div ref={ref} {...rest}>{children}</div>;
+  return (
+    <div {...stylex.props(styles.fold, collapsed && styles.foldCollapsed)}>
+      <div {...stylex.props(styles.foldSpacer)}>
+        <div ref={ref} {...rest}>{children}</div>
+      </div>
+    </div>
+  );
 });
 PanelBody.displayName = 'PanelBody';
 
@@ -362,12 +431,17 @@ export const PanelFooter = forwardRef<HTMLDivElement, PanelSectionProps>(({
   className, style, children, ...rest
 }, ref) => {
   // A collapsed panel shows only its header — footer actions (pagination
-  // etc.) operate on the hidden body, so they collapse with it.
+  // etc.) operate on the hidden body, so the footer folds in sync with it.
+  // Its top border rides on the inner content div, where the fold clips it
+  // away only as the row closes completely.
   const { collapsed } = useContext(PanelContext);
-  if (collapsed) return null;
   return (
-    <div ref={ref} {...rest} {...mergeExternal(stylex.props(styles.footer), className, style)}>
-      {children}
+    <div {...stylex.props(styles.fold, collapsed && styles.foldCollapsed)}>
+      <div {...stylex.props(styles.foldSpacer)}>
+        <div ref={ref} {...rest} {...mergeExternal(stylex.props(styles.footer), className, style)}>
+          {children}
+        </div>
+      </div>
     </div>
   );
 });

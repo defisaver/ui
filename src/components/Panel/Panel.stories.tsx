@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
 import {
   Panel, PanelHeader, PanelTitle, PanelBody, PanelFooter,
 } from './Panel';
@@ -130,16 +130,19 @@ export const Collapsed: Story = {
           <span>Footer left</span>
           <span>Footer right</span>
         </PanelFooter>
-        {/* Stays mounted while collapsed, so the header is never :last-child
-            here — the play assertion below proves the divider drops from the
-            collapse state (context), not from DOM structure. */}
-        <div aria-hidden="true" />
       </>
     ),
   },
+  // The folded body stays mounted, so the header is never :last-child in a
+  // collapsible panel — this proves the divider drops from the collapse
+  // state (context), not from DOM structure. The width stays 1px by design
+  // (animating it would shift the border-box layout); collapse hides the
+  // divider by fading its color to transparent. Initial render, no transition.
   play: async ({ canvas }) => {
     const header = canvas.getByText('Section name').closest('div') as HTMLElement;
-    await expect(header).toHaveStyle({ borderBottomWidth: '0px' });
+    await expect(header).toHaveStyle({ borderBottomColor: 'rgba(0, 0, 0, 0)' });
+    await expect(canvas.getByText('Panel content goes here.')).not.toBeVisible();
+    await expect(canvas.getByText('Footer left')).not.toBeVisible();
   },
 };
 
@@ -210,7 +213,8 @@ export const LongTitle: Story = {
 };
 
 // The one-prop collapse path: Panel owns the state, PanelBody and PanelFooter
-// unmount themselves while collapsed.
+// fold themselves (grid-row transition) while collapsed — content stays
+// mounted but leaves the a11y tree via visibility once the fold finishes.
 export const Collapsible: Story = {
   args: {
     size: 'm',
@@ -229,8 +233,9 @@ export const Collapsible: Story = {
     ),
   },
   // Runs in a real browser (vitest browser mode) with the compiled CSS
-  // applied, so it can assert paint-level behavior jsdom can't see — like
-  // the header divider dropping via :last-child when the body unmounts.
+  // applied, so it can assert paint-level behavior jsdom can't see. The fold
+  // is a 200/250ms transition, so post-click assertions poll via waitFor
+  // until it settles.
   play: async ({ canvas, userEvent }) => {
     const toggle = canvas.getByRole('button', { name: 'Section name' });
     const header = toggle.closest('div') as HTMLElement;
@@ -238,19 +243,26 @@ export const Collapsible: Story = {
     // M panels get the larger 28px button around the 16px chevron
     await expect(toggle).toHaveStyle({ height: '28px', width: '28px' });
 
-    await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
-    await expect(canvas.getByText('Footer left')).toBeInTheDocument();
-    await expect(header).toHaveStyle({ borderBottomWidth: '1px' });
+    await expect(canvas.getByText('Panel content goes here.')).toBeVisible();
+    await expect(canvas.getByText('Footer left')).toBeVisible();
+    // Divider visibility is a color fade (width would shift layout) — the
+    // token fallback #252F37 applies in Storybook
+    await expect(header).toHaveStyle({ borderBottomColor: 'rgb(37, 47, 55)' });
 
     await userEvent.click(toggle);
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await expect(canvas.queryByText('Panel content goes here.')).not.toBeInTheDocument();
-    await expect(canvas.queryByText('Footer left')).not.toBeInTheDocument();
-    await expect(header).toHaveStyle({ borderBottomWidth: '0px' });
+    await waitFor(async () => {
+      // Content is still mounted, but the finished fold hides it (visibility)
+      await expect(canvas.getByText('Panel content goes here.')).not.toBeVisible();
+      await expect(canvas.getByText('Footer left')).not.toBeVisible();
+      await expect(header).toHaveStyle({ borderBottomColor: 'rgba(0, 0, 0, 0)' });
+    });
 
     await userEvent.click(toggle);
-    await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
-    await expect(header).toHaveStyle({ borderBottomWidth: '1px' });
+    await waitFor(async () => {
+      await expect(canvas.getByText('Panel content goes here.')).toBeVisible();
+      await expect(header).toHaveStyle({ borderBottomColor: 'rgb(37, 47, 55)' });
+    });
   },
 };
 
@@ -280,9 +292,13 @@ export const CollapsibleWithoutTitle: Story = {
   play: async ({ canvas, userEvent }) => {
     const toggle = canvas.getByRole('button', { name: 'Toggle panel' });
     await userEvent.click(toggle);
-    await expect(canvas.queryByText('Panel content goes here.')).not.toBeInTheDocument();
+    await waitFor(async () => {
+      await expect(canvas.getByText('Panel content goes here.')).not.toBeVisible();
+    });
     await userEvent.click(toggle);
-    await expect(canvas.getByText('Panel content goes here.')).toBeInTheDocument();
+    await waitFor(async () => {
+      await expect(canvas.getByText('Panel content goes here.')).toBeVisible();
+    });
   },
 };
 
