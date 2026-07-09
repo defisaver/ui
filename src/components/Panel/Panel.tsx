@@ -107,10 +107,12 @@ const styles = stylex.create({
   },
   // The collapse mechanism: a grid row transitioning 1fr ↔ 0fr folds any
   // content height with zero measurement JS. The outer div clips, the spacer
-  // breaks the min-size chain (an fr track can't shrink below its item's
-  // min-height, and consumer content may set one), and `visibility` — part
-  // of the transition, so it flips only when the closing fold finishes —
-  // removes hidden content from the a11y tree and tab order.
+  // breaks the min-size chain on both axes (a grid item can't shrink below
+  // its content's min-height/min-width by default — vertically that would
+  // block the fold, horizontally it would let wide content, e.g. a scrolling
+  // card row, blow the row out past the panel instead of scrolling), and
+  // `visibility` — part of the transition, so it flips only when the closing
+  // fold finishes — removes hidden content from the a11y tree and tab order.
   fold: {
     overflow: 'hidden',
     transition: {
@@ -131,6 +133,7 @@ const styles = stylex.create({
   },
   foldSpacer: {
     minHeight: 0,
+    minWidth: 0,
   },
   // Total heights: s 44 = 8+28+8, m 56 = 10+36+10 (content row 28/36)
   headerS: {
