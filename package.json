@@ -1,6 +1,6 @@
 {
   "name": "@defisaver/ui",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "DeFi Saver design system — React components styled with StyleX, pre-compiled so consumers need no StyleX tooling.",
   "license": "ISC",
   "repository": {
