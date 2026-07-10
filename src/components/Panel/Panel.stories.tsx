@@ -246,8 +246,12 @@ export const Collapsible: Story = {
     await expect(canvas.getByText('Panel content goes here.')).toBeVisible();
     await expect(canvas.getByText('Footer left')).toBeVisible();
     // Divider visibility is a color fade (width would shift layout) — the
-    // token fallback #252F37 applies in Storybook
-    await expect(header).toHaveStyle({ borderBottomColor: 'rgb(37, 47, 55)' });
+    // divider is token-driven (surfaceBorderSurface → #252F37). StyleX's dev
+    // runtime injects the :root token vars asynchronously after mount, so the
+    // color isn't guaranteed on the very first paint — poll until it resolves.
+    await waitFor(async () => {
+      await expect(header).toHaveStyle({ borderBottomColor: 'rgb(37, 47, 55)' });
+    });
 
     await userEvent.click(toggle);
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
