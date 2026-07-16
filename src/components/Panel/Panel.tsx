@@ -1,12 +1,13 @@
 import {
   createContext, forwardRef, useCallback, useContext, useId, useMemo, useState,
 } from 'react';
-import type { ComponentPropsWithoutRef, CSSProperties, ReactNode } from 'react';
+import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '../../tokens/colors.stylex';
 import { radius } from '../../tokens/radius.stylex';
 import { space } from '../../tokens/spacing.stylex';
 import { text } from '../../tokens/typography.stylex';
+import { mergeExternal } from '../../internal/mergeExternal';
 
 export type PanelSize = 's' | 'm';
 
@@ -274,19 +275,6 @@ type PanelRootProps = Omit<ComponentPropsWithoutRef<'div'>, 'onToggle'> & {
   children: ReactNode;
   size?: PanelSize;
 } & (UncontrolledCollapseProps | ControlledCollapseProps);
-
-// stylex.props() produces the atomic class list (and sometimes inline vars);
-// fold the caller's className/style in after it so external overrides
-// survive the merge.
-const mergeExternal = (
-  sx: ReturnType<typeof stylex.props>,
-  className?: string,
-  style?: CSSProperties,
-) => ({
-  ...sx,
-  className: [sx.className, className].filter(Boolean).join(' '),
-  ...(sx.style || style ? { style: { ...sx.style, ...style } } : null),
-});
 
 // Private to Panel — a visual detail of the component, not a public icon.
 // Rendered with currentColor so it follows the toggle's token color.

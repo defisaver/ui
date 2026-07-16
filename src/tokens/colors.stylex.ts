@@ -1,17 +1,25 @@
 import * as stylex from '@stylexjs/stylex';
 
 // Semantic colors. Deliberately minimal: a token is added here the moment a
-// component needs it, never speculatively — Figma is the intended source of
-// truth for the full set. Each value defers to the app's custom property
-// (theme.scss) so components follow the app theme in-app; the fallback is the
-// app's dark-theme value for standalone use.
+// component needs it, never speculatively — Figma is the source of truth.
+// Values are owned by the library (no deferral to app CSS vars), so
+// components render Figma-true wherever they're consumed; theming, if ever
+// needed, is a stylex.createTheme over these vars.
 export const colors = stylex.defineVars({
-  surface: 'var(--surface, #1F272E)',
-  surfaceShade: 'var(--surface-shade, #181F25)',
+  surface: '#1F272E',
+  surfaceShade: '#181F25',
+  surfaceShadeStrong: '#151A1E',
   // Hairline borders/dividers on surfaces — a step lighter so they read
   // against both the page background and panel interiors
-  surfaceBorderSurface: 'var(--surface-border-surface, #252F37)',
-  textSecondary: 'var(--text-color-secondary, #B2C1CC)',
+  surfaceBorderSurface: '#252F37',
+  surfaceBorderSurfaceShade: '#1F272E',
+  // Containers: smaller blocks that sit on surfaces
+  container: '#3D4E5C',
+  containerShade: '#394956',
+  containerShadeStrong: '#33414C',
+  containerBorder: '#415361',
+  textPrimary: '#F9FAFB',
+  textSecondary: '#B2C1CC',
   // Translucent overlay for hover states on interactive elements
-  white5Hover: 'var(--interaction-white-5-hover, #FFFFFF0D)',
+  white5Hover: '#FFFFFF0D',
 });

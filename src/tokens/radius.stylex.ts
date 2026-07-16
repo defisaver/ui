@@ -1,12 +1,16 @@
 import * as stylex from '@stylexjs/stylex';
 
-// Mirrors defisaver-app's --border-radius-* custom properties.
+// Border radii. The word-scale names predate the pixel-name convention;
+// new Figma-driven values use pixel names (px2, px10), matching the
+// spacing scale.
 export const radius = stylex.defineConsts({
-  small: 'var(--border-radius-small, 4px)',
-  medium: 'var(--border-radius-medium, 6px)',
-  large: 'var(--border-radius-large, 8px)',
-  xl: 'var(--border-radius-xl, 12px)',
-  xxl: 'var(--border-radius-xxl, 16px)',
-  xxxl: 'var(--border-radius-xxxl, 20px)',
-  fullyRounded: 'var(--border-radius-fully-rounded, 50%)',
+  px2: '2px',
+  px10: '10px',
+  small: '4px',
+  medium: '6px',
+  large: '8px',
+  xl: '12px',
+  xxl: '16px',
+  xxxl: '20px',
+  fullyRounded: '50%',
 });
