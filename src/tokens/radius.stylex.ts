@@ -6,6 +6,8 @@ import * as stylex from '@stylexjs/stylex';
 export const radius = stylex.defineConsts({
   px2: '2px',
   px10: '10px',
+  // Pill shape (Figma specs 256px, not 50% — 50% would render ellipses)
+  px256: '256px',
   small: '4px',
   medium: '6px',
   large: '8px',

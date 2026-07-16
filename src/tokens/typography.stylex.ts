@@ -7,5 +7,6 @@ export const text = stylex.defineConsts({
   size11: '11px',
   sizeSmall: '12px',
   sizeRegular: '14px',
+  size15: '15px',
   weightSemiBold: '500',
 });

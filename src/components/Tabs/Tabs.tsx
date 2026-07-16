@@ -11,7 +11,7 @@ import { space } from '../../tokens/spacing.stylex';
 import { text } from '../../tokens/typography.stylex';
 import { mergeExternal } from '../../internal/mergeExternal';
 
-export type TabsSize = 's' | 'm' | 'l';
+export type TabsSize = 's' | 'm' | 'l' | 'xl';
 export type TabsVariant = 'light' | 'dark' | 'darker';
 
 // Set once on <Tabs>; every Tab reads it so consumers configure everything
@@ -61,10 +61,13 @@ const styles = stylex.create({
   tabsHug: {
     gridAutoColumns: 'max-content',
   },
-  // Radii scale with size — container 6/10/12, segment & indicator 2/6/8.
+  // Radii scale with size — container 6/10/12/pill, segment & indicator
+  // 2/6/8/pill. XL is the pill: 6px container padding (vs the shared 4px)
+  // and fully-rounded corners.
   tabsS: { borderRadius: radius.medium },
   tabsM: { borderRadius: radius.px10 },
   tabsL: { borderRadius: radius.xl },
+  tabsXl: { padding: space.px6, borderRadius: radius.px256 },
   tabsLight: { backgroundColor: colors.containerShadeStrong },
   tabsDark: { backgroundColor: colors.surfaceShade },
   tabsDarker: { backgroundColor: colors.surfaceShadeStrong },
@@ -107,11 +110,11 @@ const styles = stylex.create({
       width: '1px',
     },
   },
-  // Per-size type scale (Figma: S is size-11, M and L share Body/14 500).
-  // Heights (total 28/36/44) fall out of the shared 4px paddings around the
-  // line-height for S and M; L's type alone would stop at 36, so its
-  // min-height supplies the extra room. The letter-spacing is S-only
-  // (1% of 11px); Figma specs none at 14px.
+  // Per-size type scale (Figma: S 11px, M and L share Body/14 500, XL
+  // 15px). Heights (total 28/36/44/52) fall out of the paddings around the
+  // line-height everywhere except L, whose type alone would stop at 36
+  // total — its min-height supplies the extra room. The letter-spacing is
+  // S-only (1% of 11px).
   tabS: {
     borderRadius: radius.px2,
     fontSize: text.size11,
@@ -127,6 +130,16 @@ const styles = stylex.create({
     fontSize: text.sizeRegular,
     lineHeight: '20px',
     minHeight: '36px',
+  },
+  // XL swaps the shared 4/12 segment padding for 10/32: 10+10 around the
+  // 20px line-height makes the 40px segment that lands the pill on its
+  // 52px total (Figma's 12px block padding would overshoot to 56).
+  tabXl: {
+    borderRadius: radius.px256,
+    paddingBlock: space.px10,
+    paddingInline: space.px32,
+    fontSize: text.size15,
+    lineHeight: '20px',
   },
   tabActive: {
     color: colors.textPrimary,
@@ -158,6 +171,8 @@ const styles = stylex.create({
   indicatorS: { borderRadius: radius.px2 },
   indicatorM: { borderRadius: radius.medium },
   indicatorL: { borderRadius: radius.large },
+  // Tracks the XL container's 6px padding (insetBlock is 4px on the rest).
+  indicatorXl: { borderRadius: radius.px256, insetBlock: space.px6 },
   indicatorLight: { borderColor: colors.containerBorder, backgroundColor: colors.container },
   indicatorDark: { borderColor: colors.surfaceBorderSurface, backgroundColor: colors.surface },
   indicatorDarker: { borderColor: colors.surfaceBorderSurfaceShade, backgroundColor: colors.surfaceShade },
@@ -173,12 +188,21 @@ const containerSizeStyle = {
   s: styles.tabsS,
   m: styles.tabsM,
   l: styles.tabsL,
+  xl: styles.tabsXl,
+} as const;
+
+const tabSizeStyle = {
+  s: styles.tabS,
+  m: styles.tabM,
+  l: styles.tabL,
+  xl: styles.tabXl,
 } as const;
 
 const indicatorSizeStyle = {
   s: styles.indicatorS,
   m: styles.indicatorM,
   l: styles.indicatorL,
+  xl: styles.indicatorXl,
 } as const;
 
 const indicatorVariantStyle = {
@@ -377,9 +401,7 @@ export const Tab = forwardRef<HTMLButtonElement, TabProps>(({
       {...mergeExternal(
         stylex.props(
           styles.tab,
-          size === 's' && styles.tabS,
-          size === 'm' && styles.tabM,
-          size === 'l' && styles.tabL,
+          tabSizeStyle[size],
           active && styles.tabActive,
           (active || value === afterActiveValue) && styles.tabNoDivider,
         ),

@@ -7,7 +7,7 @@ const meta = {
   title: 'Controls/Tabs',
   component: Tabs,
   argTypes: {
-    size: { control: 'radio', options: ['s', 'm', 'l'] },
+    size: { control: 'radio', options: ['s', 'm', 'l', 'xl'] },
     variant: { control: 'radio', options: ['light', 'dark', 'darker'] },
     hugContent: { control: 'boolean' },
   },
@@ -64,7 +64,7 @@ export const AllSizes: Story = {
       alignItems: 'flex-start', display: 'flex', flexDirection: 'column', gap: 16,
     }}
     >
-      {(['s', 'm', 'l'] as TabsSize[]).map((size) => (
+      {(['s', 'm', 'l', 'xl'] as TabsSize[]).map((size) => (
         <Tabs key={size} size={size} defaultValue="supply" aria-label={size}>
           {actions}
         </Tabs>
