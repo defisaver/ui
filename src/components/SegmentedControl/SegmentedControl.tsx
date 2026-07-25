@@ -11,30 +11,32 @@ import { space } from '../../tokens/spacing.stylex';
 import { text } from '../../tokens/typography.stylex';
 import { mergeExternal } from '../../internal/mergeExternal';
 
-export type TabsSize = 's' | 'm' | 'l' | 'xl';
-export type TabsVariant = 'light' | 'dark' | 'darker';
+export type SegmentedControlSize = 's' | 'm' | 'l' | 'xl';
+export type SegmentedControlVariant = 'light' | 'dark' | 'darker';
 
-// Set once on <Tabs>; every Tab reads it so consumers configure everything
-// (size, variant, selection) in one place — same shape as Panel. registerTab
-// hands each Tab's element to the root, which owns the sliding indicator.
-interface TabsContextValue {
-  size: TabsSize;
-  variant: TabsVariant;
+// Set once on <SegmentedControl>; every SegmentedControlItem reads it so
+// consumers configure everything (size, variant, selection) in one place —
+// same shape as Panel. registerSegment hands each item's element to the
+// root, which owns the sliding indicator.
+interface SegmentedControlContextValue {
+  size: SegmentedControlSize;
+  variant: SegmentedControlVariant;
   value: string | undefined;
-  // The tab right after the active one — its divider flanks the indicator,
-  // so it hides along with the active tab's own (see the ::before styles).
+  // The segment right after the active one — its divider flanks the
+  // indicator, so it hides along with the active segment's own (see the
+  // ::before styles).
   afterActiveValue: string | undefined;
   setValue: (value: string) => void;
-  registerTab: (value: string, el: HTMLButtonElement | null) => void;
+  registerSegment: (value: string, el: HTMLButtonElement | null) => void;
 }
 
-const TabsContext = createContext<TabsContextValue>({
+const SegmentedControlContext = createContext<SegmentedControlContextValue>({
   size: 's',
   variant: 'dark',
   value: undefined,
   afterActiveValue: undefined,
   setValue: () => { },
-  registerTab: () => { },
+  registerSegment: () => { },
 });
 
 // Indicator slide: user-initiated selection → ease-out (quart, shared with
@@ -44,7 +46,7 @@ const slideEase = 'cubic-bezier(0.165, 0.84, 0.44, 1)';
 const slideMs = '200ms';
 
 const styles = stylex.create({
-  tabs: {
+  root: {
     padding: space.px4,
     gap: space.px1,
     boxSizing: 'border-box',
@@ -58,20 +60,22 @@ const styles = stylex.create({
     // Anchor for the absolutely-positioned indicator.
     position: 'relative',
   },
-  tabsHug: {
+  rootHug: {
     gridAutoColumns: 'max-content',
   },
   // Radii scale with size — container 6/10/12/pill, segment & indicator
-  // 2/6/8/pill. XL is the pill: 6px container padding (vs the shared 4px)
-  // and fully-rounded corners.
-  tabsS: { borderRadius: radius.medium },
-  tabsM: { borderRadius: radius.px10 },
-  tabsL: { borderRadius: radius.xl },
-  tabsXl: { padding: space.px6, borderRadius: radius.px256 },
-  tabsLight: { backgroundColor: colors.containerShadeStrong },
-  tabsDark: { backgroundColor: colors.surfaceShade },
-  tabsDarker: { backgroundColor: colors.surfaceShadeStrong },
-  tab: {
+  // 4/6/8/pill, keeping the indicator's corner visually tracking the
+  // container's (~2/3 of it at every size; the strict concentric 6-4=2 for
+  // S read nearly square). XL is the pill: 6px container padding (vs the
+  // shared 4px) and fully-rounded corners.
+  rootS: { borderRadius: radius.medium },
+  rootM: { borderRadius: radius.px10 },
+  rootL: { borderRadius: radius.xl },
+  rootXl: { padding: space.px6, borderRadius: radius.px256 },
+  rootLight: { backgroundColor: colors.containerShadeStrong },
+  rootDark: { backgroundColor: colors.surfaceShade },
+  rootDarker: { backgroundColor: colors.surfaceShadeStrong },
+  segment: {
     borderStyle: 'none',
     gap: space.px4,
     paddingBlock: space.px4,
@@ -92,10 +96,11 @@ const styles = stylex.create({
     zIndex: 1,
     minWidth: '68px',
     // Divider: a 16px hairline (all sizes) centered in the container's 1px
-    // gap, so it lives on every tab but the first (the indicator span
-    // renders after the tabs to keep :first-child pointing at a tab). The
-    // two dividers flanking the indicator hide (tabNoDivider) and hand off
-    // with a fade as the indicator slides between segments.
+    // gap, so it lives on every segment but the first (the indicator span
+    // renders after the segments to keep :first-child pointing at a
+    // segment). The two dividers flanking the indicator hide
+    // (segmentNoDivider) and hand off with a fade as the indicator slides
+    // between segments.
     '::before': {
       transition: 'opacity 150ms ease',
       backgroundColor: colors.surfaceBorderSurface,
@@ -111,48 +116,87 @@ const styles = stylex.create({
     },
   },
   // Per-size type scale (Figma: S 11px, M and L share Body/14 500, XL
-  // 15px). Heights (total 28/36/44/52) fall out of the paddings around the
-  // line-height everywhere except L, whose type alone would stop at 36
-  // total — its min-height supplies the extra room. The letter-spacing is
-  // S-only (1% of 11px).
-  tabS: {
-    borderRadius: radius.px2,
+  // 15px). Segment heights (20/28/36/40 → totals 28/36/44/52 inside the
+  // container padding) are pinned explicitly rather than left to
+  // padding + line-height, so an icon taller than the line box can't
+  // stretch the control. The letter-spacing is S-only (1% of 11px).
+  segmentS: {
+    borderRadius: radius.small,
     fontSize: text.size11,
     lineHeight: '12px',
+    height: '20px',
   },
-  tabM: {
+  segmentM: {
     borderRadius: radius.medium,
     fontSize: text.sizeRegular,
     lineHeight: '20px',
+    height: '28px',
   },
-  tabL: {
+  segmentL: {
     borderRadius: radius.large,
     fontSize: text.sizeRegular,
     lineHeight: '20px',
-    minHeight: '36px',
+    height: '36px',
   },
   // XL swaps the shared 4/12 segment padding for 10/32: 10+10 around the
   // 20px line-height makes the 40px segment that lands the pill on its
   // 52px total (Figma's 12px block padding would overshoot to 56).
-  tabXl: {
+  segmentXl: {
     borderRadius: radius.px256,
     paddingBlock: space.px10,
     paddingInline: space.px32,
     fontSize: text.size15,
     lineHeight: '20px',
+    height: '40px',
   },
-  tabActive: {
+  segmentActive: {
     color: colors.textPrimary,
   },
-  // Applied to the active tab (its own divider) and the one after it (the
-  // divider on the indicator's other flank).
-  tabNoDivider: {
+  // Icon-only segments (hideLabel) are square — width pinned to the size's
+  // segment height, so the sliding indicator reads as a box, not a
+  // stretched rectangle. Meant for S/M, where a label won't fit; L/XL
+  // accept it but the Figma designs don't use it there.
+  segmentIconOnly: {
+    paddingInline: 0,
+    minWidth: 'unset',
+  },
+  segmentIconOnlyS: { width: '20px' },
+  segmentIconOnlyM: { width: '28px' },
+  segmentIconOnlyL: { width: '36px' },
+  segmentIconOnlyXl: { width: '40px' },
+  // Fixed-size slot so the icon renders at the size's scale regardless of
+  // the SVG's intrinsic dimensions; consumers size the SVG to fill (100%).
+  iconSlot: {
+    alignItems: 'center',
+    display: 'inline-flex',
+    flexShrink: 0,
+    justifyContent: 'center',
+  },
+  iconS: { height: '14px', width: '14px' },
+  iconM: { height: '16px', width: '16px' },
+  iconL: { height: '18px', width: '18px' },
+  iconXl: { height: '20px', width: '20px' },
+  // Visually-hidden label (standard clip pattern): with hideLabel the text
+  // stays in the DOM so the button keeps its accessible name.
+  srOnly: {
+    margin: '-1px',
+    overflow: 'hidden',
+    clip: 'rect(0 0 0 0)',
+    clipPath: 'inset(50%)',
+    position: 'absolute',
+    whiteSpace: 'nowrap',
+    height: '1px',
+    width: '1px',
+  },
+  // Applied to the active segment (its own divider) and the one after it
+  // (the divider on the indicator's other flank).
+  segmentNoDivider: {
     '::before': {
       opacity: 0,
     },
   },
   // Positioned entirely from measurement: `left: 0` plus a translateX of the
-  // active tab's offsetLeft (both physical-left values, so RTL stays
+  // active segment's offsetLeft (both physical-left values, so RTL stays
   // consistent). Height comes from CSS — the container's 4px padding on both
   // block edges — so only x/width ever animate.
   indicator: {
@@ -168,7 +212,7 @@ const styles = stylex.create({
     zIndex: 0,
     left: 0,
   },
-  indicatorS: { borderRadius: radius.px2 },
+  indicatorS: { borderRadius: radius.small },
   indicatorM: { borderRadius: radius.medium },
   indicatorL: { borderRadius: radius.large },
   // Tracks the XL container's 6px padding (insetBlock is 4px on the rest).
@@ -179,23 +223,37 @@ const styles = stylex.create({
 });
 
 const containerVariantStyle = {
-  light: styles.tabsLight,
-  dark: styles.tabsDark,
-  darker: styles.tabsDarker,
+  light: styles.rootLight,
+  dark: styles.rootDark,
+  darker: styles.rootDarker,
 } as const;
 
 const containerSizeStyle = {
-  s: styles.tabsS,
-  m: styles.tabsM,
-  l: styles.tabsL,
-  xl: styles.tabsXl,
+  s: styles.rootS,
+  m: styles.rootM,
+  l: styles.rootL,
+  xl: styles.rootXl,
 } as const;
 
-const tabSizeStyle = {
-  s: styles.tabS,
-  m: styles.tabM,
-  l: styles.tabL,
-  xl: styles.tabXl,
+const segmentSizeStyle = {
+  s: styles.segmentS,
+  m: styles.segmentM,
+  l: styles.segmentL,
+  xl: styles.segmentXl,
+} as const;
+
+const iconSizeStyle = {
+  s: styles.iconS,
+  m: styles.iconM,
+  l: styles.iconL,
+  xl: styles.iconXl,
+} as const;
+
+const iconOnlySizeStyle = {
+  s: styles.segmentIconOnlyS,
+  m: styles.segmentIconOnlyM,
+  l: styles.segmentIconOnlyL,
+  xl: styles.segmentIconOnlyXl,
 } as const;
 
 const indicatorSizeStyle = {
@@ -217,20 +275,20 @@ const assignRef = <T,>(ref: Ref<T> | undefined, node: T | null) => {
 };
 
 // Selection comes in the two usual flavors:
-// - Uncontrolled (the common case): pass `defaultValue` and Tabs owns the
-//   state; `onValueChange` still reports switches.
+// - Uncontrolled (the common case): pass `defaultValue` and SegmentedControl
+//   owns the state; `onValueChange` still reports switches.
 // - Controlled: pass `value` and drive it from `onValueChange`.
-type TabsRootProps = Omit<ComponentPropsWithoutRef<'div'>, 'onChange'> & {
+type SegmentedControlRootProps = Omit<ComponentPropsWithoutRef<'div'>, 'onChange'> & {
   children: ReactNode;
-  size?: TabsSize;
-  variant?: TabsVariant;
+  size?: SegmentedControlSize;
+  variant?: SegmentedControlVariant;
   value?: string;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
   hugContent?: boolean;
 };
 
-export const Tabs = forwardRef<HTMLDivElement, TabsRootProps>(({
+export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlRootProps>(({
   className,
   style,
   children,
@@ -246,7 +304,7 @@ export const Tabs = forwardRef<HTMLDivElement, TabsRootProps>(({
   const isControlled = controlledValue !== undefined;
   const value = isControlled ? controlledValue : ownValue;
 
-  const tabEls = useRef(new Map<string, HTMLButtonElement>());
+  const segmentEls = useRef(new Map<string, HTMLButtonElement>());
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [indicator, setIndicator] = useState<{ x: number; width: number } | null>(null);
   const [afterActiveValue, setAfterActiveValue] = useState<string | undefined>(undefined);
@@ -256,30 +314,30 @@ export const Tabs = forwardRef<HTMLDivElement, TabsRootProps>(({
     onValueChange?.(next);
   }, [isControlled, onValueChange]);
 
-  const registerTab = useCallback((tabValue: string, el: HTMLButtonElement | null) => {
-    if (el) tabEls.current.set(tabValue, el);
-    else tabEls.current.delete(tabValue);
+  const registerSegment = useCallback((segmentValue: string, el: HTMLButtonElement | null) => {
+    if (el) segmentEls.current.set(segmentValue, el);
+    else segmentEls.current.delete(segmentValue);
   }, []);
 
-  // The indicator mirrors the active tab's measured box. A layout effect
+  // The indicator mirrors the active segment's measured box. A layout effect
   // (before paint) means the first committed frame already has the final
   // position — no slide-in from 0 on mount. The ResizeObserver re-measures
   // on anything the old app's window-resize approach missed: container-only
   // resizes, font loading, label changes.
   useLayoutEffect(() => {
-    const el = value !== undefined ? tabEls.current.get(value) : undefined;
+    const el = value !== undefined ? segmentEls.current.get(value) : undefined;
     if (!el) {
       setIndicator(null);
       setAfterActiveValue(undefined);
       return undefined;
     }
-    // The DOM neighbor is the tab whose divider sits on the indicator's
-    // trailing edge (when the active tab is last, the neighbor is the
+    // The DOM neighbor is the segment whose divider sits on the indicator's
+    // trailing edge (when the active segment is last, the neighbor is the
     // indicator span — no map entry, so this resolves to undefined).
     const sibling = el.nextElementSibling;
     let next: string | undefined;
-    tabEls.current.forEach((node, tabValue) => {
-      if (node === sibling) next = tabValue;
+    segmentEls.current.forEach((node, segmentValue) => {
+      if (node === sibling) next = segmentValue;
     });
     setAfterActiveValue(next);
     const measure = () => setIndicator({ x: el.offsetLeft, width: el.offsetWidth });
@@ -292,18 +350,18 @@ export const Tabs = forwardRef<HTMLDivElement, TabsRootProps>(({
   }, [value]);
 
   const context = useMemo(() => ({
-    size, variant, value, afterActiveValue, setValue, registerTab,
-  }), [size, variant, value, afterActiveValue, setValue, registerTab]);
+    size, variant, value, afterActiveValue, setValue, registerSegment,
+  }), [size, variant, value, afterActiveValue, setValue, registerSegment]);
 
   const indicatorSx = stylex.props(
     styles.indicator, indicatorSizeStyle[size], indicatorVariantStyle[variant],
   );
 
   return (
-    <TabsContext.Provider value={context}>
+    <SegmentedControlContext.Provider value={context}>
       <div
         // Single-select control, not view-switching tabs — radio semantics,
-        // with the matching roving tabindex + arrow keys on each Tab.
+        // with the matching roving tabindex + arrow keys on each item.
         role="radiogroup"
         ref={(node) => {
           containerRef.current = node;
@@ -312,18 +370,18 @@ export const Tabs = forwardRef<HTMLDivElement, TabsRootProps>(({
         {...rest}
         {...mergeExternal(
           stylex.props(
-            styles.tabs,
+            styles.root,
             containerSizeStyle[size],
             containerVariantStyle[variant],
-            hugContent && styles.tabsHug,
+            hugContent && styles.rootHug,
           ),
           className,
           style,
         )}
       >
         {children}
-        {/* After the tabs so the first tab stays :first-child (divider
-            logic); z-index keeps it under the labels regardless. */}
+        {/* After the segments so the first segment stays :first-child
+            (divider logic); z-index keeps it under the labels regardless. */}
         {indicator && (
           <span
             aria-hidden="true"
@@ -336,28 +394,35 @@ export const Tabs = forwardRef<HTMLDivElement, TabsRootProps>(({
           />
         )}
       </div>
-    </TabsContext.Provider>
+    </SegmentedControlContext.Provider>
   );
 });
-Tabs.displayName = 'Tabs';
+SegmentedControl.displayName = 'SegmentedControl';
 
-type TabProps = ComponentPropsWithoutRef<'button'> & {
+type SegmentedControlItemProps = ComponentPropsWithoutRef<'button'> & {
   value: string;
   children: ReactNode;
+  // Rendered before the label in a per-size fixed slot (14/16/18/20).
+  icon?: ReactNode;
+  // Icon-only view: the label is visually hidden but stays in the DOM as
+  // the accessible name. Intended for the S and M sizes.
+  hideLabel?: boolean;
 };
 
-export const Tab = forwardRef<HTMLButtonElement, TabProps>(({
+export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedControlItemProps>(({
   className,
   style,
   children,
   value,
+  icon,
+  hideLabel = false,
   onClick,
   onKeyDown,
   ...rest
 }, ref) => {
   const {
-    size, value: activeValue, afterActiveValue, setValue, registerTab,
-  } = useContext(TabsContext);
+    size, value: activeValue, afterActiveValue, setValue, registerSegment,
+  } = useContext(SegmentedControlContext);
   const active = value === activeValue;
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
@@ -366,8 +431,8 @@ export const Tab = forwardRef<HTMLButtonElement, TabProps>(({
   };
 
   // Radio-style arrow navigation: focus moves and selection follows, with
-  // wrap-around. The group is read from the DOM, so tab order needs no
-  // registration bookkeeping and conditional tabs just work.
+  // wrap-around. The group is read from the DOM, so segment order needs no
+  // registration bookkeeping and conditional segments just work.
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     onKeyDown?.(e);
     const dir = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1
@@ -389,10 +454,10 @@ export const Tab = forwardRef<HTMLButtonElement, TabProps>(({
       role="radio"
       aria-checked={active}
       // Roving tabindex — one tab stop for the whole group. With no
-      // selection yet every tab stays reachable.
+      // selection yet every segment stays reachable.
       tabIndex={active || activeValue === undefined ? 0 : -1}
       ref={(node) => {
-        registerTab(value, node);
+        registerSegment(value, node);
         assignRef(ref, node);
       }}
       onClick={handleClick}
@@ -400,17 +465,24 @@ export const Tab = forwardRef<HTMLButtonElement, TabProps>(({
       {...rest}
       {...mergeExternal(
         stylex.props(
-          styles.tab,
-          tabSizeStyle[size],
-          active && styles.tabActive,
-          (active || value === afterActiveValue) && styles.tabNoDivider,
+          styles.segment,
+          segmentSizeStyle[size],
+          active && styles.segmentActive,
+          (active || value === afterActiveValue) && styles.segmentNoDivider,
+          hideLabel && styles.segmentIconOnly,
+          hideLabel && iconOnlySizeStyle[size],
         ),
         className,
         style,
       )}
     >
-      {children}
+      {icon && (
+        <span aria-hidden="true" {...stylex.props(styles.iconSlot, iconSizeStyle[size])}>
+          {icon}
+        </span>
+      )}
+      {hideLabel ? <span {...stylex.props(styles.srOnly)}>{children}</span> : children}
     </button>
   );
 });
-Tab.displayName = 'Tab';
+SegmentedControlItem.displayName = 'SegmentedControlItem';
