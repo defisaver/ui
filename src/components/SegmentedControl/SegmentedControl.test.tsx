@@ -142,6 +142,84 @@ describe('SegmentedControl', () => {
     expect(list).toHaveAttribute('aria-checked', 'true');
   });
 
+  it('ignores clicks on a disabled item', async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <SegmentedControl defaultValue="supply" onValueChange={onValueChange}>
+        <SegmentedControlItem value="supply">Supply</SegmentedControlItem>
+        <SegmentedControlItem value="borrow" disabled>Borrow</SegmentedControlItem>
+      </SegmentedControl>,
+    );
+
+    await user.click(screen.getByRole('radio', { name: 'Borrow' }));
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('radio', { name: 'Supply' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  describe('items wrapped in extra elements (tooltip wrappers)', () => {
+    const wrappedItems = (
+      <>
+        <span title="Supply tooltip"><SegmentedControlItem value="supply">Supply</SegmentedControlItem></span>
+        <span><SegmentedControlItem value="borrow">Borrow</SegmentedControlItem></span>
+        <span><SegmentedControlItem value="repay">Repay</SegmentedControlItem></span>
+      </>
+    );
+
+    it('keeps selection, indicator and keyboard navigation working', async () => {
+      const user = userEvent.setup();
+      const { container } = render(
+        <SegmentedControl defaultValue="supply">{wrappedItems}</SegmentedControl>,
+      );
+
+      await user.click(screen.getByRole('radio', { name: 'Borrow' }));
+      expect(screen.getByRole('radio', { name: 'Borrow' })).toHaveAttribute('aria-checked', 'true');
+      expect(container.querySelector('span[aria-hidden]')).toBeInTheDocument();
+
+      // Focus is on Borrow from the click; arrows keep working across wrappers
+      await user.keyboard('{ArrowRight}');
+      expect(screen.getByRole('radio', { name: 'Repay' })).toHaveAttribute('aria-checked', 'true');
+    });
+
+    it('derives divider state from DOM order, matching unwrapped rendering', () => {
+      // Same selection, direct children: the classes each position gets.
+      const reference = render(
+        <SegmentedControl defaultValue="repay">{threeItems}</SegmentedControl>,
+      );
+      const firstClasses = screen.getByRole('radio', { name: 'Supply' }).className;
+      const middleClasses = screen.getByRole('radio', { name: 'Borrow' }).className;
+      expect(firstClasses).not.toBe(middleClasses); // first hides its divider
+      reference.unmount();
+
+      render(<SegmentedControl defaultValue="repay">{wrappedItems}</SegmentedControl>);
+      expect(screen.getByRole('radio', { name: 'Supply' }).className).toBe(firstClasses);
+      expect(screen.getByRole('radio', { name: 'Borrow' }).className).toBe(middleClasses);
+    });
+
+    it('recomputes divider state when items are added', () => {
+      const reference = render(
+        <SegmentedControl defaultValue="repay">{threeItems}</SegmentedControl>,
+      );
+      const firstClasses = screen.getByRole('radio', { name: 'Supply' }).className;
+      const middleClasses = screen.getByRole('radio', { name: 'Borrow' }).className;
+      reference.unmount();
+
+      const { rerender } = render(
+        <SegmentedControl defaultValue="repay">
+          <span><SegmentedControlItem value="borrow">Borrow</SegmentedControlItem></span>
+          <span><SegmentedControlItem value="repay">Repay</SegmentedControlItem></span>
+        </SegmentedControl>,
+      );
+      // Borrow is first for now, so it hides its divider.
+      expect(screen.getByRole('radio', { name: 'Borrow' }).className).toBe(firstClasses);
+
+      rerender(<SegmentedControl defaultValue="repay">{wrappedItems}</SegmentedControl>);
+      // Supply took over as first; Borrow gets its divider back.
+      expect(screen.getByRole('radio', { name: 'Supply' }).className).toBe(firstClasses);
+      expect(screen.getByRole('radio', { name: 'Borrow' }).className).toBe(middleClasses);
+    });
+  });
+
   it('renders no indicator until an item is selected', async () => {
     const user = userEvent.setup();
     const { container } = render(<SegmentedControl>{threeItems}</SegmentedControl>);

@@ -22,9 +22,13 @@ interface SegmentedControlContextValue {
   size: SegmentedControlSize;
   variant: SegmentedControlVariant;
   value: string | undefined;
-  // The segment right after the active one — its divider flanks the
-  // indicator, so it hides along with the active segment's own (see the
-  // ::before styles).
+  // Divider bookkeeping, derived by the root from the DOM order of the
+  // registered segments — not from sibling structure, so items wrapped in
+  // extra elements (tooltip wrappers) behave like direct children. The
+  // first segment has no divider to its left; the segment right after the
+  // active one hides its divider along with the active segment's own (the
+  // pair flanking the indicator; see the ::before styles).
+  firstValue: string | undefined;
   afterActiveValue: string | undefined;
   setValue: (value: string) => void;
   registerSegment: (value: string, el: HTMLButtonElement | null) => void;
@@ -34,6 +38,7 @@ const SegmentedControlContext = createContext<SegmentedControlContextValue>({
   size: 's',
   variant: 'dark',
   value: undefined,
+  firstValue: undefined,
   afterActiveValue: undefined,
   setValue: () => { },
   registerSegment: () => { },
@@ -95,17 +100,22 @@ const styles = stylex.create({
     whiteSpace: 'nowrap',
     zIndex: 1,
     minWidth: '68px',
+    // Items may be wrapped in extra elements (tooltip wrappers) — the
+    // wrapper then becomes the grid child, so the button fills it to keep
+    // the indicator matching the visual cell. Direct children already
+    // stretch to their track, and the icon-only widths (applied later) win.
+    width: '100%',
     // Divider: a 16px hairline (all sizes) centered in the container's 1px
-    // gap, so it lives on every segment but the first (the indicator span
-    // renders after the segments to keep :first-child pointing at a
-    // segment). The two dividers flanking the indicator hide
-    // (segmentNoDivider) and hand off with a fade as the indicator slides
-    // between segments.
+    // gap. It renders on every segment; which ones hide it — the first in
+    // DOM order plus the two flanking the indicator — the root decides via
+    // context (segmentNoDivider), so wrapped items behave exactly like
+    // direct children. The flanking pair hands off with a fade as the
+    // indicator slides between segments.
     '::before': {
       transition: 'opacity 150ms ease',
       backgroundColor: colors.surfaceBorderSurface,
       content: '""',
-      display: { default: 'block', ':first-child': 'none' },
+      display: 'block',
       insetInlineStart: '-1px',
       opacity: 1,
       position: 'absolute',
@@ -152,6 +162,14 @@ const styles = stylex.create({
   segmentActive: {
     color: colors.textPrimary,
   },
+  // Applied before segmentActive, so a disabled *selected* segment keeps its
+  // primary color (dimmed by the opacity) while an idle disabled one stays
+  // secondary with the hover highlight pinned off.
+  segmentDisabled: {
+    color: { default: colors.textSecondary, ':hover': colors.textSecondary },
+    cursor: 'not-allowed',
+    opacity: 0.5,
+  },
   // Icon-only segments (hideLabel) are square — width pinned to the size's
   // segment height, so the sliding indicator reads as a box, not a
   // stretched rectangle. Meant for S/M, where a label won't fit; L/XL
@@ -188,8 +206,9 @@ const styles = stylex.create({
     height: '1px',
     width: '1px',
   },
-  // Applied to the active segment (its own divider) and the one after it
-  // (the divider on the indicator's other flank).
+  // Applied to the first segment in DOM order (nothing to divide from), the
+  // active segment (its own divider), and the one after it (the divider on
+  // the indicator's other flank).
   segmentNoDivider: {
     '::before': {
       opacity: 0,
@@ -307,6 +326,7 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlRootP
   const segmentEls = useRef(new Map<string, HTMLButtonElement>());
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [indicator, setIndicator] = useState<{ x: number; width: number } | null>(null);
+  const [firstValue, setFirstValue] = useState<string | undefined>(undefined);
   const [afterActiveValue, setAfterActiveValue] = useState<string | undefined>(undefined);
 
   const setValue = useCallback((next: string) => {
@@ -319,6 +339,24 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlRootP
     else segmentEls.current.delete(segmentValue);
   }, []);
 
+  // Divider bookkeeping. Segment order comes from the DOM
+  // (compareDocumentPosition over the registered elements), not from sibling
+  // relationships, so items wrapped in extra elements (tooltip wrappers)
+  // work. No dependency array: membership changes have no render-safe signal
+  // (registration happens in ref callbacks), so this recomputes every commit
+  // — a sort over a handful of nodes — and bails out via value equality.
+  useLayoutEffect(() => {
+    const ordered = Array.from(segmentEls.current.entries())
+
+      .sort(([, a], [, b]) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+      .map(([segmentValue]) => segmentValue);
+    const activeIndex = value === undefined ? -1 : ordered.indexOf(value);
+    // When the active segment is last (or there is none), this is undefined.
+    const after = activeIndex === -1 ? undefined : ordered[activeIndex + 1];
+    setFirstValue((prev) => (prev === ordered[0] ? prev : ordered[0]));
+    setAfterActiveValue((prev) => (prev === after ? prev : after));
+  });
+
   // The indicator mirrors the active segment's measured box. A layout effect
   // (before paint) means the first committed frame already has the final
   // position — no slide-in from 0 on mount. The ResizeObserver re-measures
@@ -328,18 +366,8 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlRootP
     const el = value !== undefined ? segmentEls.current.get(value) : undefined;
     if (!el) {
       setIndicator(null);
-      setAfterActiveValue(undefined);
       return undefined;
     }
-    // The DOM neighbor is the segment whose divider sits on the indicator's
-    // trailing edge (when the active segment is last, the neighbor is the
-    // indicator span — no map entry, so this resolves to undefined).
-    const sibling = el.nextElementSibling;
-    let next: string | undefined;
-    segmentEls.current.forEach((node, segmentValue) => {
-      if (node === sibling) next = segmentValue;
-    });
-    setAfterActiveValue(next);
     const measure = () => setIndicator({ x: el.offsetLeft, width: el.offsetWidth });
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined; // SSR/jsdom
@@ -350,8 +378,8 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlRootP
   }, [value]);
 
   const context = useMemo(() => ({
-    size, variant, value, afterActiveValue, setValue, registerSegment,
-  }), [size, variant, value, afterActiveValue, setValue, registerSegment]);
+    size, variant, value, firstValue, afterActiveValue, setValue, registerSegment,
+  }), [size, variant, value, firstValue, afterActiveValue, setValue, registerSegment]);
 
   const indicatorSx = stylex.props(
     styles.indicator, indicatorSizeStyle[size], indicatorVariantStyle[variant],
@@ -380,8 +408,7 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlRootP
         )}
       >
         {children}
-        {/* After the segments so the first segment stays :first-child
-            (divider logic); z-index keeps it under the labels regardless. */}
+        {/* After the segments; z-index keeps it under the labels. */}
         {indicator && (
           <span
             aria-hidden="true"
@@ -416,12 +443,13 @@ export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedContr
   value,
   icon,
   hideLabel = false,
+  disabled,
   onClick,
   onKeyDown,
   ...rest
 }, ref) => {
   const {
-    size, value: activeValue, afterActiveValue, setValue, registerSegment,
+    size, value: activeValue, firstValue, afterActiveValue, setValue, registerSegment,
   } = useContext(SegmentedControlContext);
   const active = value === activeValue;
 
@@ -460,6 +488,7 @@ export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedContr
         registerSegment(value, node);
         assignRef(ref, node);
       }}
+      disabled={disabled}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       {...rest}
@@ -467,8 +496,9 @@ export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedContr
         stylex.props(
           styles.segment,
           segmentSizeStyle[size],
+          disabled && styles.segmentDisabled,
           active && styles.segmentActive,
-          (active || value === afterActiveValue) && styles.segmentNoDivider,
+          (active || value === firstValue || value === afterActiveValue) && styles.segmentNoDivider,
           hideLabel && styles.segmentIconOnly,
           hideLabel && iconOnlySizeStyle[size],
         ),

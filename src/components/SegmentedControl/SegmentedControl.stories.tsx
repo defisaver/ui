@@ -142,6 +142,47 @@ export const IconOnly: Story = {
   ),
 };
 
+// Tooltips come from composition: wrap an item in any wrapper (the app's
+// TooltipWrapper; a bare span with a native title here). Divider and
+// equal-width logic don't depend on items being direct children.
+export const WithTooltip: Story = {
+  args: {
+    defaultValue: 'borrow',
+    children: (
+      <>
+        <span title="Borrow against your collateral">
+          <SegmentedControlItem value="borrow">Borrow</SegmentedControlItem>
+        </span>
+        <span title="Multiply your exposure">
+          <SegmentedControlItem value="leverage">Leverage</SegmentedControlItem>
+        </span>
+      </>
+    ),
+  },
+};
+
+export const DisabledItems: Story = {
+  args: { children: null },
+  parameters: { controls: { disable: true } },
+  render: () => (
+    <div style={{
+      alignItems: 'flex-start', display: 'flex', flexDirection: 'column', gap: 16,
+    }}
+    >
+      <SegmentedControl defaultValue="supply" aria-label="One item disabled">
+        <SegmentedControlItem value="supply">Supply</SegmentedControlItem>
+        <SegmentedControlItem value="borrow" disabled>Borrow</SegmentedControlItem>
+        <SegmentedControlItem value="repay">Repay</SegmentedControlItem>
+      </SegmentedControl>
+      {/* Group-level disable (e.g. while a tx is loading) is per-item. */}
+      <SegmentedControl defaultValue="borrow" aria-label="Whole group disabled">
+        <SegmentedControlItem value="borrow" disabled>Borrow</SegmentedControlItem>
+        <SegmentedControlItem value="leverage" disabled>Leverage</SegmentedControlItem>
+      </SegmentedControl>
+    </div>
+  ),
+};
+
 const ControlledExample = () => {
   const [value, setValue] = useState('borrow');
   return (
