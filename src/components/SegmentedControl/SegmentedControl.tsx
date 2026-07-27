@@ -162,6 +162,14 @@ const styles = stylex.create({
   segmentActive: {
     color: colors.textPrimary,
   },
+  // The base divider color (surfaceBorder) matches the light variant's
+  // background, so light steps its dividers up to the container border —
+  // the same divider-equals-indicator-border relationship dark has.
+  segmentLight: {
+    '::before': {
+      backgroundColor: colors.containerBorder,
+    },
+  },
   // Applied before segmentActive, so a disabled *selected* segment keeps its
   // primary color (dimmed by the opacity) while an idle disabled one stays
   // secondary with the hover highlight pinned off.
@@ -449,7 +457,7 @@ export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedContr
   ...rest
 }, ref) => {
   const {
-    size, value: activeValue, firstValue, afterActiveValue, setValue, registerSegment,
+    size, variant, value: activeValue, firstValue, afterActiveValue, setValue, registerSegment,
   } = useContext(SegmentedControlContext);
   const active = value === activeValue;
 
@@ -496,6 +504,7 @@ export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedContr
         stylex.props(
           styles.segment,
           segmentSizeStyle[size],
+          variant === 'light' && styles.segmentLight,
           disabled && styles.segmentDisabled,
           active && styles.segmentActive,
           (active || value === firstValue || value === afterActiveValue) && styles.segmentNoDivider,

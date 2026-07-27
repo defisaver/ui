@@ -14,10 +14,11 @@ export const colors = stylex.defineVars({
   // so they read against both the page background and panel interiors
   surfaceBorder: '#252F37',
   surfaceShadeBorder: '#1F272E',
-  // Containers: smaller blocks that sit on surfaces
-  container: '#3D4E5C',
-  containerShadeStrong: '#33414C',
-  containerBorder: '#415361',
+  // Containers: smaller blocks that sit on surfaces. Values match the app's
+  // container palette (blue-gray 750/720/820).
+  container: '#33414C',
+  containerShadeStrong: '#252F37',
+  containerBorder: '#394956',
   textPrimary: '#F9FAFB',
   textSecondary: '#B2C1CC',
   // Translucent white overlay for hover states on interactive elements
