@@ -55,17 +55,18 @@ const styles = stylex.create({
     padding: space.px4,
     gap: space.px1,
     boxSizing: 'border-box',
-    // Equal-width segments sized by the widest label — the common case in
-    // the app, so it's the default; hugContent opts out. Grid (not flex)
-    // because 1fr auto-columns equalize to the largest content with no
-    // min-width fighting.
-    display: 'inline-grid',
+    // Block-level, so the control spans its container with equal-width
+    // segments — the common case in the app, so it's the default;
+    // hugContent opts out. Grid (not flex) because 1fr auto-columns
+    // equalize with no min-width fighting.
+    display: 'grid',
     gridAutoColumns: '1fr',
     gridAutoFlow: 'column',
     // Anchor for the absolutely-positioned indicator.
     position: 'relative',
   },
   rootHug: {
+    display: 'inline-grid',
     gridAutoColumns: 'max-content',
   },
   // Radii scale with size — container 6/10/12/pill, segment & indicator
