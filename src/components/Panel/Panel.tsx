@@ -46,8 +46,8 @@ const collapseMs = '200ms';
 
 const styles = stylex.create({
   panel: {
-    borderColor: colors.surfaceBorderSurface,
-    borderRadius: radius.xl,
+    borderColor: colors.surfaceBorder,
+    borderRadius: radius.px12,
     borderStyle: 'solid',
     borderWidth: '0.5px',
     overflow: 'hidden',
@@ -70,14 +70,14 @@ const styles = stylex.create({
     paddingInlineStart: space.px12,
     // Anchor for the absolutely-positioned collapse toggle.
     position: 'relative',
-    borderBottomColor: colors.surfaceBorderSurface,
+    borderBottomColor: colors.surfaceBorder,
     borderBottomStyle: 'solid',
     // The divider only separates the header from content below it. When the
     // header is the last child (e.g. a collapsed panel) it would stack against
     // the Panel's own bottom border, reading as a doubled line — so drop it.
     borderBottomWidth: { default: '0.5px', ':last-child': '0' },
-    borderTopLeftRadius: `calc(${radius.xl} - 1px)`,
-    borderTopRightRadius: `calc(${radius.xl} - 1px)`,
+    borderTopLeftRadius: `calc(${radius.px12} - 1px)`,
+    borderTopRightRadius: `calc(${radius.px12} - 1px)`,
   },
   // The toggle sits out of flow (see styles.toggle), so the header only has
   // to clear it with 6px of breathing room after the button box: the 20px S
@@ -150,14 +150,14 @@ const styles = stylex.create({
     alignItems: 'center',
     color: colors.textSecondary,
     display: 'inline-flex',
-    fontWeight: text.weightSemiBold,
+    fontWeight: text.weight500,
   },
   titleS: {
-    fontSize: text.sizeSmall,
+    fontSize: text.size12,
     lineHeight: '12px',
   },
   titleM: {
-    fontSize: text.sizeRegular,
+    fontSize: text.size14,
     lineHeight: '20px',
   },
   toggle: {
@@ -168,7 +168,7 @@ const styles = stylex.create({
       '@media (prefers-reduced-motion: reduce)': 'none',
     },
     alignItems: 'center',
-    backgroundColor: { default: 'transparent', ':hover': colors.white5Hover },
+    backgroundColor: { default: 'transparent', ':hover': colors.hoverOverlay },
     color: colors.textSecondary,
     cursor: 'pointer',
     display: 'inline-flex',
@@ -193,7 +193,7 @@ const styles = stylex.create({
   // corners, and the ::before insets extend the clickable area to 40×40 in
   // both cases.
   toggleS: {
-    borderRadius: radius.medium,
+    borderRadius: radius.px6,
     height: '20px',
     width: '20px',
     '::before': {
@@ -201,7 +201,7 @@ const styles = stylex.create({
     },
   },
   toggleM: {
-    borderRadius: radius.large,
+    borderRadius: radius.px8,
     height: '28px',
     width: '28px',
     '::before': {
@@ -234,7 +234,7 @@ const styles = stylex.create({
     boxSizing: 'border-box',
     display: 'flex',
     justifyContent: 'space-between',
-    borderTopColor: colors.surfaceBorderSurface,
+    borderTopColor: colors.surfaceBorder,
     borderTopStyle: 'solid',
     borderTopWidth: '0.5px',
     minHeight: '36px',

@@ -11,12 +11,12 @@ const styles = stylex.create({
   all: {
     padding: `${space.px12} ${space.px16}`,
     borderColor: colors.surfaceShade,
-    borderRadius: { default: radius.xl, ':hover': radius.fullyRounded },
+    borderRadius: { default: radius.px12, ':hover': radius.circle },
     gap: { default: space.px8, ':hover': space.px1 },
     backgroundColor: colors.surface,
     color: colors.textSecondary,
-    fontSize: text.sizeRegular,
-    fontWeight: text.weightSemiBold,
+    fontSize: text.size14,
+    fontWeight: text.weight500,
   },
 });
 

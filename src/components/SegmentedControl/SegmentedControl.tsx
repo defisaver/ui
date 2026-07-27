@@ -73,9 +73,9 @@ const styles = stylex.create({
   // container's (~2/3 of it at every size; the strict concentric 6-4=2 for
   // S read nearly square). XL is the pill: 6px container padding (vs the
   // shared 4px) and fully-rounded corners.
-  rootS: { borderRadius: radius.medium },
+  rootS: { borderRadius: radius.px6 },
   rootM: { borderRadius: radius.px10 },
-  rootL: { borderRadius: radius.xl },
+  rootL: { borderRadius: radius.px12 },
   rootXl: { padding: space.px6, borderRadius: radius.px256 },
   rootLight: { backgroundColor: colors.containerShadeStrong },
   rootDark: { backgroundColor: colors.surfaceShade },
@@ -93,7 +93,7 @@ const styles = stylex.create({
     cursor: 'pointer',
     display: 'inline-flex',
     fontFamily: 'inherit',
-    fontWeight: text.weightSemiBold,
+    fontWeight: text.weight500,
     justifyContent: 'center',
     // Above the indicator, which slides underneath the labels.
     position: 'relative',
@@ -113,7 +113,7 @@ const styles = stylex.create({
     // indicator slides between segments.
     '::before': {
       transition: 'opacity 150ms ease',
-      backgroundColor: colors.surfaceBorderSurface,
+      backgroundColor: colors.surfaceBorder,
       content: '""',
       display: 'block',
       insetInlineStart: '-1px',
@@ -131,20 +131,20 @@ const styles = stylex.create({
   // padding + line-height, so an icon taller than the line box can't
   // stretch the control. The letter-spacing is S-only (1% of 11px).
   segmentS: {
-    borderRadius: radius.small,
+    borderRadius: radius.px4,
     fontSize: text.size11,
     lineHeight: '12px',
     height: '20px',
   },
   segmentM: {
-    borderRadius: radius.medium,
-    fontSize: text.sizeRegular,
+    borderRadius: radius.px6,
+    fontSize: text.size14,
     lineHeight: '20px',
     height: '28px',
   },
   segmentL: {
-    borderRadius: radius.large,
-    fontSize: text.sizeRegular,
+    borderRadius: radius.px8,
+    fontSize: text.size14,
     lineHeight: '20px',
     height: '36px',
   },
@@ -231,14 +231,14 @@ const styles = stylex.create({
     zIndex: 0,
     left: 0,
   },
-  indicatorS: { borderRadius: radius.small },
-  indicatorM: { borderRadius: radius.medium },
-  indicatorL: { borderRadius: radius.large },
+  indicatorS: { borderRadius: radius.px4 },
+  indicatorM: { borderRadius: radius.px6 },
+  indicatorL: { borderRadius: radius.px8 },
   // Tracks the XL container's 6px padding (insetBlock is 4px on the rest).
   indicatorXl: { borderRadius: radius.px256, insetBlock: space.px6 },
   indicatorLight: { borderColor: colors.containerBorder, backgroundColor: colors.container },
-  indicatorDark: { borderColor: colors.surfaceBorderSurface, backgroundColor: colors.surface },
-  indicatorDarker: { borderColor: colors.surfaceBorderSurfaceShade, backgroundColor: colors.surfaceShade },
+  indicatorDark: { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
+  indicatorDarker: { borderColor: colors.surfaceShadeBorder, backgroundColor: colors.surfaceShade },
 });
 
 const containerVariantStyle = {
