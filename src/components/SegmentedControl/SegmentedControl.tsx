@@ -62,8 +62,14 @@ const styles = stylex.create({
     display: 'grid',
     gridAutoColumns: '1fr',
     gridAutoFlow: 'column',
-    // Anchor for the absolutely-positioned indicator.
     position: 'relative',
+    // The segments' specified minWidth (68px) replaces their automatic
+    // min-content floor, so a tight flex/grid parent could shrink tracks
+    // below the label width and clip text. The root re-asserts the floor:
+    // it never goes below its content, overflowing its container visibly
+    // instead of crushing labels.
+    minWidth: 'max-content',
+    // Anchor for the absolutely-positioned indicator.
   },
   rootHug: {
     display: 'inline-grid',
