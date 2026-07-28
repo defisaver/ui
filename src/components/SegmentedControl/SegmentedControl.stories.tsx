@@ -71,8 +71,7 @@ export const AllSizes: Story = {
 };
 
 // Equal-width is the default: every segment matches the widest label. This
-// opts out, letting each segment hug its own label (all still >= the 68px
-// Figma min-width).
+// opts out, letting each segment hug its own label.
 export const HugContent: Story = {
   args: {
     defaultValue: 'all',

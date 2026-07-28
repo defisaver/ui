@@ -62,14 +62,8 @@ const styles = stylex.create({
     display: 'grid',
     gridAutoColumns: '1fr',
     gridAutoFlow: 'column',
-    position: 'relative',
-    // The segments' specified minWidth (68px) replaces their automatic
-    // min-content floor, so a tight flex/grid parent could shrink tracks
-    // below the label width and clip text. The root re-asserts the floor:
-    // it never goes below its content, overflowing its container visibly
-    // instead of crushing labels.
-    minWidth: 'max-content',
     // Anchor for the absolutely-positioned indicator.
+    position: 'relative',
   },
   rootHug: {
     display: 'inline-grid',
@@ -106,7 +100,9 @@ const styles = stylex.create({
     position: 'relative',
     whiteSpace: 'nowrap',
     zIndex: 1,
-    minWidth: '68px',
+    // No specified minWidth here: it would replace the automatic
+    // min-content minimum, letting a tight container shrink tracks below
+    // the label width and clip text. The automatic minimum is the floor.
     // Items may be wrapped in extra elements (tooltip wrappers) — the
     // wrapper then becomes the grid child, so the button fills it to keep
     // the indicator matching the visual cell. Direct children already
@@ -191,7 +187,6 @@ const styles = stylex.create({
   // accept it but the Figma designs don't use it there.
   segmentIconOnly: {
     paddingInline: 0,
-    minWidth: 'unset',
   },
   segmentIconOnlyS: { width: '20px' },
   segmentIconOnlyM: { width: '28px' },
