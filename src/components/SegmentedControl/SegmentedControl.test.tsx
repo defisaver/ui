@@ -220,14 +220,105 @@ describe('SegmentedControl', () => {
     });
   });
 
-  it('renders no indicator until an item is selected', async () => {
+  it('keeps the indicator hidden until an item is selected', async () => {
     const user = userEvent.setup();
     const { container } = render(<SegmentedControl>{threeItems}</SegmentedControl>);
 
-    const spanCount = () => container.querySelectorAll('span[aria-hidden]').length;
-    expect(spanCount()).toBe(0);
+    // Always mounted; positionIndicator flips inline visibility on selection.
+    const indicator = container.querySelector('span[aria-hidden]') as HTMLElement;
+    expect(indicator).toBeInTheDocument();
+    expect(indicator.style.visibility).not.toBe('visible');
 
     await user.click(screen.getByRole('radio', { name: 'Borrow' }));
-    expect(spanCount()).toBe(1);
+    expect(indicator.style.visibility).toBe('visible');
+  });
+
+  it('does not re-fire onValueChange when the selected item is clicked again', async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <SegmentedControl defaultValue="supply" onValueChange={onValueChange}>
+        {threeItems}
+      </SegmentedControl>,
+    );
+
+    await user.click(screen.getByRole('radio', { name: 'Supply' }));
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('radio', { name: 'Borrow' }));
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a consumer veto selection via preventDefault in onClick', async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn();
+    render(
+      <SegmentedControl defaultValue="supply" onValueChange={onValueChange}>
+        <SegmentedControlItem value="supply">Supply</SegmentedControlItem>
+        <SegmentedControlItem value="borrow" onClick={(e) => e.preventDefault()}>Borrow</SegmentedControlItem>
+      </SegmentedControl>,
+    );
+
+    await user.click(screen.getByRole('radio', { name: 'Borrow' }));
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('radio', { name: 'Supply' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('keeps a single tab stop (the first enabled item) when nothing is selected', async () => {
+    const user = userEvent.setup();
+    render(<SegmentedControl aria-label="Action">{threeItems}</SegmentedControl>);
+
+    expect(screen.getByRole('radio', { name: 'Supply' })).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('radio', { name: 'Borrow' })).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('radio', { name: 'Repay' })).toHaveAttribute('tabindex', '-1');
+
+    // One stop for the whole group: tabbing again leaves it
+    await user.tab();
+    expect(screen.getByRole('radio', { name: 'Supply' })).toHaveFocus();
+    await user.tab();
+    expect(document.body).toHaveFocus();
+  });
+
+  it('moves the tab stop to the first enabled item when the selected one is disabled', async () => {
+    const user = userEvent.setup();
+    render(
+      <SegmentedControl defaultValue="borrow">
+        <SegmentedControlItem value="supply">Supply</SegmentedControlItem>
+        <SegmentedControlItem value="borrow" disabled>Borrow</SegmentedControlItem>
+        <SegmentedControlItem value="repay">Repay</SegmentedControlItem>
+      </SegmentedControl>,
+    );
+
+    // The group stays reachable even though the checked radio can't take focus
+    await user.tab();
+    expect(screen.getByRole('radio', { name: 'Supply' })).toHaveFocus();
+
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('radio', { name: 'Repay' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('throws a descriptive error when an item is rendered outside a SegmentedControl', () => {
+    // Silence React's error-boundary logging for the expected throw.
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => render(<SegmentedControlItem value="supply">Supply</SegmentedControlItem>))
+      .toThrow('SegmentedControlItem must be rendered inside a SegmentedControl');
+    consoleError.mockRestore();
+  });
+
+  it('rejects invalid prop combinations at compile time', () => {
+    // Never rendered — these exist for tsc, which typechecks the suite.
+    type Action = 'supply' | 'borrow';
+    const handleAction = (v: Action) => v;
+    const cases = {
+      // @ts-expect-error value and defaultValue are mutually exclusive
+      bothModes: <SegmentedControl value="supply" defaultValue="borrow">{threeItems}</SegmentedControl>,
+      // @ts-expect-error hideLabel requires an icon
+      hideLabelWithoutIcon: <SegmentedControlItem value="supply" hideLabel>Supply</SegmentedControlItem>,
+      // @ts-expect-error 'repay' is not in the annotated value union
+      valueOutsideUnion: <SegmentedControl<Action> defaultValue="repay">{threeItems}</SegmentedControl>,
+      // The annotated union types the callback and its values
+      typedCallback: <SegmentedControl<Action> defaultValue="supply" onValueChange={handleAction}>{threeItems}</SegmentedControl>,
+    };
+    expect(Object.keys(cases)).toHaveLength(4);
   });
 });

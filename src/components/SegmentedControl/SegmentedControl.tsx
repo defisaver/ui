@@ -2,7 +2,7 @@ import {
   createContext, forwardRef, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState,
 } from 'react';
 import type {
-  ComponentPropsWithoutRef, KeyboardEvent, MouseEvent, ReactNode, Ref,
+  ComponentPropsWithoutRef, KeyboardEvent, MouseEvent, ReactElement, ReactNode, Ref,
 } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '../../tokens/colors.stylex';
@@ -30,19 +30,18 @@ interface SegmentedControlContextValue {
   // pair flanking the indicator; see the ::before styles).
   firstValue: string | undefined;
   afterActiveValue: string | undefined;
+  // The group's single tab stop: the active item, unless it's disabled or
+  // there is no selection — then the first enabled item (per the ARIA radio
+  // pattern). A disabled button ignores tabIndex, so pinning the stop on a
+  // disabled active item would strand the whole group out of the tab order.
+  tabStopValue: string | undefined;
   setValue: (value: string) => void;
   registerSegment: (value: string, el: HTMLButtonElement | null) => void;
 }
 
-const SegmentedControlContext = createContext<SegmentedControlContextValue>({
-  size: 's',
-  variant: 'dark',
-  value: undefined,
-  firstValue: undefined,
-  afterActiveValue: undefined,
-  setValue: () => { },
-  registerSegment: () => { },
-});
+// null outside a provider: SegmentedControlItem throws on it rather than
+// silently rendering a segment that can't select anything.
+const SegmentedControlContext = createContext<SegmentedControlContextValue | null>(null);
 
 // Indicator slide: user-initiated selection → ease-out (quart, shared with
 // Panel so the DS moves as one). Segment-sized element, so the middle of the
@@ -227,7 +226,10 @@ const styles = stylex.create({
   // Positioned entirely from measurement: `left: 0` plus a translateX of the
   // active segment's offsetLeft (both physical-left values, so RTL stays
   // consistent). Height comes from CSS — the container's 4px padding on both
-  // block edges — so only x/width ever animate.
+  // block edges — so only x/width ever animate. transform/width/visibility
+  // are written imperatively (positionIndicator), never through React state
+  // or the style prop; hidden here is the unpositioned default it returns to
+  // when there is no selection.
   indicator: {
     borderStyle: 'solid',
     borderWidth: '1px',
@@ -238,6 +240,7 @@ const styles = stylex.create({
     },
     boxSizing: 'border-box',
     position: 'absolute',
+    visibility: 'hidden',
     zIndex: 0,
     left: 0,
   },
@@ -303,21 +306,28 @@ const assignRef = <T,>(ref: Ref<T> | undefined, node: T | null) => {
   else if (ref) (ref as { current: T | null }).current = node;
 };
 
-// Selection comes in the two usual flavors:
+// Selection comes in the two usual flavors, made mutually exclusive by the
+// trailing union (`never` blocks the prop from the other mode):
 // - Uncontrolled (the common case): pass `defaultValue` and SegmentedControl
 //   owns the state; `onValueChange` still reports switches.
 // - Controlled: pass `value` and drive it from `onValueChange`.
-type SegmentedControlRootProps = Omit<ComponentPropsWithoutRef<'div'>, 'onChange'> & {
-  children: ReactNode;
-  size?: SegmentedControlSize;
-  variant?: SegmentedControlVariant;
-  value?: string;
-  defaultValue?: string;
-  onValueChange?: (value: string) => void;
-  hugContent?: boolean;
-};
+// V narrows value/defaultValue/onValueChange to the consumer's union of
+// segment values. Inference is exact in controlled mode, where V comes from
+// the state's type; uncontrolled consumers annotate <SegmentedControl<V>>
+// explicitly, since a bare defaultValue="supply" infers V as just 'supply'.
+type SegmentedControlRootProps<V extends string = string> =
+  Omit<ComponentPropsWithoutRef<'div'>, 'onChange'> & {
+    children: ReactNode;
+    size?: SegmentedControlSize;
+    variant?: SegmentedControlVariant;
+    onValueChange?: (value: V) => void;
+    hugContent?: boolean;
+  } & (
+    | { value: V; defaultValue?: never }
+    | { value?: never; defaultValue?: V }
+  );
 
-export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlRootProps>(({
+const SegmentedControlRoot = forwardRef<HTMLDivElement, SegmentedControlRootProps>(({
   className,
   style,
   children,
@@ -335,9 +345,13 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlRootP
 
   const segmentEls = useRef(new Map<string, HTMLButtonElement>());
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [indicator, setIndicator] = useState<{ x: number; width: number } | null>(null);
+  const indicatorRef = useRef<HTMLSpanElement | null>(null);
+  // Tracks the indicator's hidden/positioned state in the DOM — a ref, not
+  // React state, like the positioning itself.
+  const indicatorHiddenRef = useRef(true);
   const [firstValue, setFirstValue] = useState<string | undefined>(undefined);
   const [afterActiveValue, setAfterActiveValue] = useState<string | undefined>(undefined);
+  const [tabStopValue, setTabStopValue] = useState<string | undefined>(undefined);
 
   const setValue = useCallback((next: string) => {
     if (!isControlled) setOwnValue(next);
@@ -349,47 +363,81 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlRootP
     else segmentEls.current.delete(segmentValue);
   }, []);
 
-  // Divider bookkeeping. Segment order comes from the DOM
+  // The indicator mirrors the active segment's measured box. Positioning is
+  // a direct DOM write — never React state — so it can run on every commit
+  // and from ResizeObserver callbacks with no render feedback possible.
+  // Re-writing unchanged values is a browser no-op (computed style is
+  // equal), so no equality guard is needed either.
+  const positionIndicator = useCallback((el: HTMLButtonElement | undefined) => {
+    const indicatorEl = indicatorRef.current;
+    if (!indicatorEl) return;
+    if (!el) {
+      // Back to the class default: visibility hidden.
+      indicatorEl.style.visibility = '';
+      indicatorHiddenRef.current = true;
+      return;
+    }
+    // When the indicator (re)appears — first selection, or the active
+    // element coming back — it must land in place, not slide in from a stale
+    // position: write with the transition suppressed, flush, then restore.
+    const wasHidden = indicatorHiddenRef.current;
+    if (wasHidden) indicatorEl.style.transition = 'none';
+    indicatorEl.style.transform = `translateX(${el.offsetLeft}px)`;
+    indicatorEl.style.width = `${el.offsetWidth}px`;
+    indicatorEl.style.visibility = 'visible';
+    if (wasHidden) {
+      void indicatorEl.offsetWidth; // flush, so the jump isn't animated
+      indicatorEl.style.transition = '';
+    }
+    indicatorHiddenRef.current = false;
+  }, []);
+
+  // Divider and tab-stop bookkeeping. Segment order comes from the DOM
   // (compareDocumentPosition over the registered elements), not from sibling
   // relationships, so items wrapped in extra elements (tooltip wrappers)
   // work. No dependency array: membership changes have no render-safe signal
   // (registration happens in ref callbacks), so this recomputes every commit
   // — a sort over a handful of nodes — and bails out via value equality.
   useLayoutEffect(() => {
-    const ordered = Array.from(segmentEls.current.entries())
-
-      .sort(([, a], [, b]) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
-      .map(([segmentValue]) => segmentValue);
+    const orderedEntries = Array.from(segmentEls.current.entries())
+      .sort(([, a], [, b]) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+    const ordered = orderedEntries.map(([segmentValue]) => segmentValue);
     const activeIndex = value === undefined ? -1 : ordered.indexOf(value);
     // When the active segment is last (or there is none), this is undefined.
     const after = activeIndex === -1 ? undefined : ordered[activeIndex + 1];
+    const activeEl = activeIndex === -1 ? undefined : orderedEntries[activeIndex][1];
+    // Disabled state is read from the DOM at commit time, so toggling a
+    // segment's disabled prop moves the tab stop on the same commit.
+    const tabStop = activeEl && !activeEl.disabled
+      ? value
+      : orderedEntries.find(([, el]) => !el.disabled)?.[0];
     setFirstValue((prev) => (prev === ordered[0] ? prev : ordered[0]));
     setAfterActiveValue((prev) => (prev === after ? prev : after));
+    setTabStopValue((prev) => (prev === tabStop ? prev : tabStop));
+    // Per-commit reposition (a pure DOM write): catches the active element
+    // being replaced under the same value (a wrapper remounting its
+    // children), which the [value]-keyed effect below — and its
+    // ResizeObserver, still bound to the old node — would miss.
+    positionIndicator(activeEl);
   });
 
-  // The indicator mirrors the active segment's measured box. A layout effect
-  // (before paint) means the first committed frame already has the final
-  // position — no slide-in from 0 on mount. The ResizeObserver re-measures
-  // on anything the old app's window-resize approach missed: container-only
-  // resizes, font loading, label changes.
+  // A layout effect (before paint) means the first committed frame already
+  // has the final position — no slide-in on mount. The ResizeObserver
+  // re-measures on anything the old app's window-resize approach missed:
+  // container-only resizes, font loading, label changes.
   useLayoutEffect(() => {
     const el = value !== undefined ? segmentEls.current.get(value) : undefined;
-    if (!el) {
-      setIndicator(null);
-      return undefined;
-    }
-    const measure = () => setIndicator({ x: el.offsetLeft, width: el.offsetWidth });
-    measure();
-    if (typeof ResizeObserver === 'undefined') return undefined; // SSR/jsdom
-    const observer = new ResizeObserver(measure);
+    positionIndicator(el);
+    if (!el || typeof ResizeObserver === 'undefined') return undefined; // SSR/jsdom
+    const observer = new ResizeObserver(() => positionIndicator(el));
     observer.observe(el);
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, [value]);
+  }, [value, positionIndicator]);
 
   const context = useMemo(() => ({
-    size, variant, value, firstValue, afterActiveValue, setValue, registerSegment,
-  }), [size, variant, value, firstValue, afterActiveValue, setValue, registerSegment]);
+    size, variant, value, firstValue, afterActiveValue, tabStopValue, setValue, registerSegment,
+  }), [size, variant, value, firstValue, afterActiveValue, tabStopValue, setValue, registerSegment]);
 
   const indicatorSx = stylex.props(
     styles.indicator, indicatorSizeStyle[size], indicatorVariantStyle[variant],
@@ -418,33 +466,32 @@ export const SegmentedControl = forwardRef<HTMLDivElement, SegmentedControlRootP
         )}
       >
         {children}
-        {/* After the segments; z-index keeps it under the labels. */}
-        {indicator && (
-          <span
-            aria-hidden="true"
-            {...indicatorSx}
-            style={{
-              ...indicatorSx.style,
-              transform: `translateX(${indicator.x}px)`,
-              width: indicator.width,
-            }}
-          />
-        )}
+        {/* After the segments; z-index keeps it under the labels. Always
+            mounted, class-hidden until positionIndicator places it. */}
+        <span aria-hidden="true" ref={indicatorRef} {...indicatorSx} />
       </div>
     </SegmentedControlContext.Provider>
   );
 });
-SegmentedControl.displayName = 'SegmentedControl';
+SegmentedControlRoot.displayName = 'SegmentedControl';
+
+// forwardRef erases generics (React 18), so the implementation is typed over
+// plain strings and exported behind a generic call signature.
+export const SegmentedControl = SegmentedControlRoot as (<V extends string = string>(
+  props: SegmentedControlRootProps<V> & { ref?: Ref<HTMLDivElement> },
+) => ReactElement) & { displayName?: string };
 
 type SegmentedControlItemProps = ComponentPropsWithoutRef<'button'> & {
   value: string;
   children: ReactNode;
-  // Rendered before the label in a per-size fixed slot (14/16/18/20).
-  icon?: ReactNode;
-  // Icon-only view: the label is visually hidden but stays in the DOM as
-  // the accessible name. Intended for the S and M sizes.
-  hideLabel?: boolean;
-};
+} & (
+  // The icon renders before the label in a per-size fixed slot (14/16/18/20).
+  // hideLabel is the icon-only view: the label is visually hidden but stays
+  // in the DOM as the accessible name (intended for the S and M sizes) — so
+  // it requires an icon, or the segment would render empty.
+  | { icon: ReactNode; hideLabel?: boolean }
+  | { icon?: ReactNode; hideLabel?: false }
+);
 
 export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedControlItemProps>(({
   className,
@@ -458,13 +505,22 @@ export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedContr
   onKeyDown,
   ...rest
 }, ref) => {
+  const context = useContext(SegmentedControlContext);
+  if (context === null) {
+    throw new Error('SegmentedControlItem must be rendered inside a SegmentedControl');
+  }
   const {
-    size, variant, value: activeValue, firstValue, afterActiveValue, setValue, registerSegment,
-  } = useContext(SegmentedControlContext);
+    size, variant, value: activeValue, firstValue, afterActiveValue, tabStopValue,
+    setValue, registerSegment,
+  } = context;
   const active = value === activeValue;
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     onClick?.(e);
+    // preventDefault in a consumer onClick vetoes the switch (unsaved-changes
+    // guards); re-clicking the selected segment stays silent, like a native
+    // radio.
+    if (e.defaultPrevented || active) return;
     setValue(value);
   };
 
@@ -491,9 +547,10 @@ export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedContr
       type="button"
       role="radio"
       aria-checked={active}
-      // Roving tabindex — one tab stop for the whole group. With no
-      // selection yet every segment stays reachable.
-      tabIndex={active || activeValue === undefined ? 0 : -1}
+      // Roving tabindex — one tab stop for the whole group; the root picks
+      // which item holds it (active, else first enabled) so a disabled or
+      // absent selection can't strand the group out of the tab order.
+      tabIndex={value === tabStopValue ? 0 : -1}
       ref={(node) => {
         registerSegment(value, node);
         assignRef(ref, node);
