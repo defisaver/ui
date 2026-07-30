@@ -44,10 +44,13 @@ const styles = stylex.create({
   // Transparent row — the tabs sit directly on whatever surface hosts
   // them, unlike SegmentedControl's contained pill. Block-level flex, but
   // items keep their natural width; the wrapper container dictates overall
-  // width (and scrolling, if it wants any).
+  // width (and scrolling, if it wants any). No alignItems: the default
+  // stretch lets a taller wrapper (a panel header with its own height)
+  // grow the items, so the underline lands flush on the wrapper's bottom
+  // edge — the item centers its own label, and a free-standing row is
+  // exactly item-height, so the Figma look is unchanged.
   root: {
     gap: space.px24,
-    alignItems: 'center',
     display: 'flex',
   },
   rootCompact: {
