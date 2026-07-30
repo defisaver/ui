@@ -10,6 +10,7 @@ export const space = stylex.defineConsts({
   px8: '8px',
   px10: '10px',
   px12: '12px',
+  px14: '14px',
   px16: '16px',
   px20: '20px',
   px24: '24px',

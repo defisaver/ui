@@ -21,6 +21,9 @@ export const colors = stylex.defineVars({
   containerBorder: '#394956',
   textPrimary: '#F9FAFB',
   textSecondary: '#B2C1CC',
+  // Figma --brand-vivid-border: the brand green used for active markers
+  // (Tabs underline). Same value the app knows as --color-green-400.
+  brandVividBorder: '#4BB87D',
   // Translucent white overlay for hover states on interactive elements
   hoverOverlay: '#FFFFFF0D',
 });
