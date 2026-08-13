@@ -9,7 +9,7 @@ const meta = {
   argTypes: {
     size: { control: 'radio', options: ['s', 'm', 'l'] },
     spacing: { control: 'radio', options: ['regular', 'compact'] },
-    stretch: { control: 'boolean' },
+    fullWidth: { control: 'boolean' },
   },
 } satisfies Meta<typeof Tabs>;
 
@@ -31,16 +31,17 @@ export const Playground: Story = {
   args: {
     defaultValue: 'one',
     size: 'm',
-    spacing: 'regular',
-    stretch: false,
+    spacing: 'compact',
+    fullWidth: false,
     children: items,
   },
 };
 
-// The two dense-surface knobs, alone and combined: compact halves the gap
-// (24 → 12, the Hyperliquid tab bars), stretch makes items share the row
-// equally (the mobile info tabs) — the wrapper still dictates row width.
-export const CompactAndStretch: Story = {
+// The two layout knobs. `spacing` is the gap: 'compact' (12px, the default,
+// every dense tab bar in the app) vs 'regular' (24px, page navigation).
+// `fullWidth` fills the wrapper and splits it equally between the items —
+// the row grows too, so the dashed 420px box below needs no CSS of its own.
+export const SpacingAndFullWidth: Story = {
   args: { children: null },
   parameters: { controls: { disable: true } },
   render: () => (
@@ -48,15 +49,22 @@ export const CompactAndStretch: Story = {
       display: 'flex', flexDirection: 'column', gap: 24, width: 420,
     }}
     >
-      <Tabs size="s" spacing="compact" defaultValue="orderbook" aria-label="Compact">
+      <Tabs size="s" defaultValue="orderbook" aria-label="Compact">
         <TabsItem value="orderbook">Order Book</TabsItem>
         <TabsItem value="trades">Trades</TabsItem>
       </Tabs>
-      <Tabs size="s" stretch defaultValue="chart" aria-label="Stretch">
-        <TabsItem value="chart">Chart</TabsItem>
+      <Tabs size="s" spacing="regular" defaultValue="orderbook" aria-label="Regular">
         <TabsItem value="orderbook">Order Book</TabsItem>
         <TabsItem value="trades">Trades</TabsItem>
       </Tabs>
+      {/* Flex wrapper: the row would hug its items without fullWidth. */}
+      <div style={{ border: '1px dashed #394956', display: 'flex' }}>
+        <Tabs size="s" fullWidth defaultValue="chart" aria-label="Full width">
+          <TabsItem value="chart">Chart</TabsItem>
+          <TabsItem value="orderbook">Order Book</TabsItem>
+          <TabsItem value="trades">Trades</TabsItem>
+        </Tabs>
+      </div>
     </div>
   ),
 };
@@ -118,26 +126,22 @@ export const WithSlot: Story = {
   },
 };
 
-// asChild: the item renders the element you pass (the app's NavLink; plain
-// anchors here) with the tab styling and aria-current merged on — the
+// `as` renders the item as the element you name (the app's NavLink; plain
+// anchors here) with the tab styling and aria-current applied to it — the
 // SubNavigation case. Real navigation, not view switching: wrap in <nav>,
 // clear the tablist default with role={undefined}, and drive value from
 // the current path.
-export const AsChildLinks: Story = {
+export const AsLinks: Story = {
   args: { children: null },
   parameters: { controls: { disable: true } },
   render: () => (
     <nav aria-label="Manage">
-      <Tabs size="m" value="/borrow" role={undefined}>
-        <TabsItem value="/borrow" asChild>
-          <a href="#borrow">Borrow</a>
-        </TabsItem>
-        <TabsItem value="/multiply" asChild>
-          <a href="#multiply">Multiply</a>
-        </TabsItem>
-        <TabsItem value="/savings" asChild>
-          <a href="#savings">Savings</a>
-        </TabsItem>
+      {/* spacing="regular" (24px) is the page-navigation gap — the one
+          surface that opts out of the compact default. */}
+      <Tabs size="m" spacing="regular" value="/borrow" role={undefined}>
+        <TabsItem value="/borrow" as="a" href="#borrow">Borrow</TabsItem>
+        <TabsItem value="/multiply" as="a" href="#multiply">Multiply</TabsItem>
+        <TabsItem value="/savings" as="a" href="#savings">Savings</TabsItem>
       </Tabs>
     </nav>
   ),

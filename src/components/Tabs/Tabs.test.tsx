@@ -156,6 +156,35 @@ describe('Tabs', () => {
     expect(document.body).toHaveFocus();
   });
 
+  // jsdom can't compute StyleX's compiled classes, so these assert that the
+  // root *participates* in the prop at all — which is the regression that
+  // bit us: fullWidth used to style only the items, leaving every consumer
+  // to force the row itself with `> * { flex: 1 }` in their own SCSS.
+  it('applies fullWidth to the row itself, not only to the items', () => {
+    const { container: plain } = render(<Tabs defaultValue="one">{threeItems}</Tabs>);
+    const { container: full } = render(<Tabs defaultValue="one" fullWidth>{threeItems}</Tabs>);
+
+    const plainRoot = plain.firstElementChild as HTMLElement;
+    const fullRoot = full.firstElementChild as HTMLElement;
+
+    expect(fullRoot.classList.length).toBeGreaterThan(plainRoot.classList.length);
+  });
+
+  it('defaults to compact spacing, with regular as the opt-in', () => {
+    const { container: byDefault } = render(<Tabs defaultValue="one">{threeItems}</Tabs>);
+    const { container: compact } = render(
+      <Tabs defaultValue="one" spacing="compact">{threeItems}</Tabs>,
+    );
+    const { container: regular } = render(
+      <Tabs defaultValue="one" spacing="regular">{threeItems}</Tabs>,
+    );
+
+    const classesOf = (c: HTMLElement) => (c.firstElementChild as HTMLElement).className;
+
+    expect(classesOf(byDefault)).toBe(classesOf(compact));
+    expect(classesOf(regular)).not.toBe(classesOf(compact));
+  });
+
   it('applies StyleX classes and merges a custom className', () => {
     const { container } = render(
       <Tabs className="custom" defaultValue="one">{threeItems}</Tabs>,
@@ -180,21 +209,23 @@ describe('Tabs', () => {
     expect(itemRef.current).toBe(screen.getByTestId('item'));
   });
 
-  describe('asChild (link mode)', () => {
+  describe('as (link mode)', () => {
     const links = (
       <>
-        <TabsItem value="/borrow" asChild><a href="#borrow">Borrow</a></TabsItem>
-        <TabsItem value="/multiply" asChild><a href="#multiply">Multiply</a></TabsItem>
+        <TabsItem value="/borrow" as="a" href="#borrow">Borrow</TabsItem>
+        <TabsItem value="/multiply" as="a" href="#multiply">Multiply</TabsItem>
       </>
     );
 
-    it('renders the child element with the tab styling merged on', () => {
+    it('renders the element named by `as`, with the tab styling on it', () => {
       render(<Tabs value="/borrow">{links}</Tabs>);
 
       const link = screen.getByRole('link', { name: 'Borrow' });
       expect(link).toHaveAttribute('href', '#borrow');
       // StyleX classes land on the anchor itself
       expect(link.className.length).toBeGreaterThan(0);
+      // No button is rendered around it
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 
     it('marks the active link with aria-current and no tab role', () => {
@@ -212,36 +243,65 @@ describe('Tabs', () => {
       expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     });
 
-    it('reports clicks through onValueChange and keeps the child onClick', async () => {
+    it('reports clicks through onValueChange and keeps the consumer onClick', async () => {
       const user = userEvent.setup();
       const onValueChange = vi.fn();
-      const childOnClick = vi.fn((e) => e.preventDefault()); // block jsdom navigation
+      const onClick = vi.fn((e) => e.preventDefault()); // block jsdom navigation
       render(
         <Tabs value="/borrow" onValueChange={onValueChange}>
-          <TabsItem value="/borrow" asChild><a href="#borrow">Borrow</a></TabsItem>
-          <TabsItem value="/multiply" asChild>
-            <a href="#multiply" onClick={childOnClick}>Multiply</a>
-          </TabsItem>
+          <TabsItem value="/borrow" as="a" href="#borrow">Borrow</TabsItem>
+          <TabsItem value="/multiply" as="a" href="#multiply" onClick={onClick}>Multiply</TabsItem>
         </Tabs>,
       );
 
       await user.click(screen.getByRole('link', { name: 'Multiply' }));
-      expect(childOnClick).toHaveBeenCalled();
-      // The child's preventDefault vetoes selection, like button mode
+      expect(onClick).toHaveBeenCalled();
+      // preventDefault vetoes selection, exactly as in button mode
       expect(onValueChange).not.toHaveBeenCalled();
     });
 
-    it('forwards refs to the child element', () => {
+    it('forwards refs to the rendered element', () => {
       const itemRef = createRef<HTMLElement>();
       render(
         <Tabs value="/borrow">
-          <TabsItem value="/borrow" asChild ref={itemRef}>
-            <a href="#borrow">Borrow</a>
-          </TabsItem>
+          <TabsItem value="/borrow" as="a" href="#borrow" ref={itemRef}>Borrow</TabsItem>
         </Tabs>,
       );
 
       expect(itemRef.current).toBe(screen.getByRole('link', { name: 'Borrow' }));
+    });
+
+    // The two props that the old asChild branch silently dropped, because it
+    // was a second hand-written render path. One path now, so they can't.
+    it('honors disabled on a link: no navigation, no selection', async () => {
+      const user = userEvent.setup();
+      const onValueChange = vi.fn();
+      render(
+        <Tabs value="/borrow" onValueChange={onValueChange}>
+          <TabsItem value="/borrow" as="a" href="#borrow">Borrow</TabsItem>
+          <TabsItem value="/multiply" as="a" href="#multiply" disabled>Multiply</TabsItem>
+        </Tabs>,
+      );
+
+      const link = screen.getByRole('link', { name: 'Multiply' });
+      expect(link).toHaveAttribute('aria-disabled', 'true');
+
+      await user.click(link);
+      expect(onValueChange).not.toHaveBeenCalled();
+    });
+
+    it('keeps a consumer onKeyDown on a link', async () => {
+      const user = userEvent.setup();
+      const onKeyDown = vi.fn();
+      render(
+        <Tabs value="/borrow" role={undefined}>
+          <TabsItem value="/borrow" as="a" href="#borrow" onKeyDown={onKeyDown}>Borrow</TabsItem>
+        </Tabs>,
+      );
+
+      screen.getByRole('link', { name: 'Borrow' }).focus();
+      await user.keyboard('{ArrowRight}');
+      expect(onKeyDown).toHaveBeenCalled();
     });
   });
 
@@ -260,13 +320,15 @@ describe('Tabs', () => {
     const cases = {
       // @ts-expect-error value and defaultValue are mutually exclusive
       bothModes: <Tabs value="one" defaultValue="two">{threeItems}</Tabs>,
-      // @ts-expect-error asChild requires a single element child
-      asChildWithText: <TabsItem value="one" asChild>One</TabsItem>,
+      // @ts-expect-error href is not a button prop — `as="a"` is required
+      hrefWithoutAs: <TabsItem value="one" href="#one">One</TabsItem>,
       // @ts-expect-error 'three' is not in the annotated value union
       valueOutsideUnion: <Tabs<View> defaultValue="three">{threeItems}</Tabs>,
       // The annotated union types the callback and its values
       typedCallback: <Tabs<View> defaultValue="one" onValueChange={handleView}>{threeItems}</Tabs>,
+      // `as` types the target element's own props through
+      typedLinkProps: <TabsItem value="one" as="a" href="#one" target="_blank">One</TabsItem>,
     };
-    expect(Object.keys(cases)).toHaveLength(4);
+    expect(Object.keys(cases)).toHaveLength(5);
   });
 });
