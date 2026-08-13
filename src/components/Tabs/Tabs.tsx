@@ -303,19 +303,23 @@ const TabsItemImpl = forwardRef<HTMLElement, TabsItemImplProps>(({
 
   // Tablist arrow navigation with wrap-around; selection follows focus.
   // The group is read from the DOM, so tab order needs no registration
-  // bookkeeping and conditional tabs just work. Only tabs rove: a link
-  // group has no [role="tablist"] to find, so this exits early there and
-  // the consumer's own onKeyDown still runs.
+  // bookkeeping and conditional tabs just work.
   const handleKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     onKeyDown?.(e);
+    // Consumers veto arrow handling the same way they veto a click.
+    if (e.defaultPrevented) return;
     const dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
     if (!dir) return;
     const group = e.currentTarget.closest('[role="tablist"]');
     if (!group) return;
-    e.preventDefault();
     const tabs = Array.from(group.querySelectorAll<HTMLElement>('[role="tab"]:not(:disabled)'));
     const index = tabs.indexOf(e.currentTarget);
+    // Not one of the roving tabs — a link still sitting inside the root's
+    // default tablist role, most likely. Leave the key to the browser
+    // instead of swallowing it: preventDefault belongs after this guard,
+    // not before it.
     if (index === -1) return;
+    e.preventDefault();
     const next = tabs[(index + dir + tabs.length) % tabs.length];
     next?.focus();
     next?.click();
@@ -349,6 +353,18 @@ const TabsItemImpl = forwardRef<HTMLElement, TabsItemImplProps>(({
         'aria-disabled': disabled || undefined,
       };
 
+  // After `rest`, so a disabled item can't be handed its target back.
+  // Blocking onClick isn't enough on its own: middle-click fires auxclick
+  // and "open in new tab" fires nothing at all, so a disabled anchor that
+  // keeps its href stays navigable while looking inert. Dropping href also
+  // drops the implicit link role and focusability; tabIndex covers targets
+  // that carry their destination in a prop of their own (a router Link's
+  // `to`), which we can't strip without breaking the component — prefer a
+  // plain disabled tab over a disabled router link.
+  const disabledLinkProps = disabled && !isButton
+    ? { href: undefined, tabIndex: -1 }
+    : null;
+
   return (
     <Component
       {...semantics}
@@ -356,6 +372,7 @@ const TabsItemImpl = forwardRef<HTMLElement, TabsItemImplProps>(({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       {...rest}
+      {...disabledLinkProps}
       {...mergeExternal(sx, className, style)}
     >
       {children}

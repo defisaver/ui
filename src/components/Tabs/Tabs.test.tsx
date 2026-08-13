@@ -75,6 +75,24 @@ describe('Tabs', () => {
     expect(screen.getByRole('tab', { name: 'Three' })).toHaveAttribute('aria-selected', 'true');
   });
 
+  // Symmetry with onClick: a consumer that handles the arrow itself vetoes
+  // the roving the same way preventDefault vetoes a selection.
+  it('lets a consumer veto arrow navigation via preventDefault in onKeyDown', async () => {
+    const user = userEvent.setup();
+    render(
+      <Tabs defaultValue="one">
+        <TabsItem value="one" onKeyDown={(e) => e.preventDefault()}>One</TabsItem>
+        <TabsItem value="two">Two</TabsItem>
+      </Tabs>,
+    );
+
+    screen.getByRole('tab', { name: 'One' }).focus();
+    await user.keyboard('{ArrowRight}');
+
+    expect(screen.getByRole('tab', { name: 'One' })).toHaveFocus();
+    expect(screen.getByRole('tab', { name: 'One' })).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('skips disabled items during arrow navigation', async () => {
     const user = userEvent.setup();
     render(
@@ -283,10 +301,13 @@ describe('Tabs', () => {
         </Tabs>,
       );
 
-      const link = screen.getByRole('link', { name: 'Multiply' });
-      expect(link).toHaveAttribute('aria-disabled', 'true');
+      // Stripped of its href it is no longer exposed as a link at all,
+      // which is the point — see the dedicated test below.
+      const item = screen.getByText('Multiply');
+      expect(item).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.queryByRole('link', { name: 'Multiply' })).not.toBeInTheDocument();
 
-      await user.click(link);
+      await user.click(item);
       expect(onValueChange).not.toHaveBeenCalled();
     });
 
@@ -302,6 +323,39 @@ describe('Tabs', () => {
       screen.getByRole('link', { name: 'Borrow' }).focus();
       await user.keyboard('{ArrowRight}');
       expect(onKeyDown).toHaveBeenCalled();
+    });
+
+    // The root still carries role="tablist" unless the consumer clears it,
+    // so the arrow handler *does* find a group here — it just finds no
+    // [role="tab"] members. It must leave the key to the browser rather
+    // than preventDefault it on the way out.
+    it('does not swallow arrow keys when links sit in a default-role root', async () => {
+      const user = userEvent.setup();
+      let prevented: boolean | undefined;
+      render(
+        <div onKeyDown={(e) => { prevented = e.defaultPrevented; }}>
+          <Tabs value="/borrow">{links}</Tabs>
+        </div>,
+      );
+
+      screen.getByRole('link', { name: 'Borrow' }).focus();
+      await user.keyboard('{ArrowRight}');
+      expect(prevented).toBe(false);
+    });
+
+    it('drops the href and the tab stop on a disabled link', () => {
+      render(
+        <Tabs value="/borrow">
+          <TabsItem value="/multiply" as="a" href="#multiply" disabled>Multiply</TabsItem>
+        </Tabs>,
+      );
+
+      // No href means no link role and no natural focusability, so
+      // middle-click and "open in new tab" have nothing to act on.
+      const item = screen.getByText('Multiply');
+      expect(item).not.toHaveAttribute('href');
+      expect(item).toHaveAttribute('tabindex', '-1');
+      expect(item).toHaveAttribute('aria-disabled', 'true');
     });
   });
 
